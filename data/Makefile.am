@@ -1,6 +1,7 @@
 #
 # Install, and make if needed, prboom.wad
 #
+CC_FOR_BUILD=@CC_FOR_BUILD@
 
 noinst_PROGRAMS = rdatawad
 rdatawad_SOURCES = rd_main.c
@@ -9,6 +10,14 @@ rdatawad_SOURCES += rd_output.c rd_output.h
 rdatawad_SOURCES += rd_sound.c rd_sound.h
 rdatawad_SOURCES += rd_palette.c rd_palette.h
 rdatawad_SOURCES += rd_graphic.c rd_graphic.h
+
+LINK_FOR_BUILD.cpp = $(CC_FOR_BUILD) $(CPPFLAGS_FOR_BUILD) $(LDFLAGS_FOR_BUILD) $(TARGET_ARCH_FOR_BUILD)
+
+rdatawad$(BUILD_EXEEXT) : $(rdatawad_OBJECTS)
+	$(LINK_FOR_BUILD.cpp) $^ $(LOADLIBES_FOR_BUILD) $(LDLIBS_FOR_BUILD) -o $@
+
+$(rdatawad_OBJECTS) : CC=$(CC_FOR_BUILD)
+$(rdatawad_OBJECTS) : CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
 
 waddir=$(DOOMWADDIR)
 wad_DATA=prboom.wad
@@ -254,7 +263,7 @@ WAD_CMDLINE += -sounds $(SOUNDS)
 WAD_CMDLINE += -graphics $(GRAPHICS)
 WAD_CMDLINE += -marker SS_START -sprites $(SPRITEP) -marker SS_END
 
-prboom.wad : rdatawad $(WAD_SRC)
+prboom.wad : rdatawad$(BUILD_EXEEXT) $(WAD_SRC)
 	${AM_V_GEN}./rdatawad -I $(srcdir) $(WAD_CMDLINE) -o $@
 
 EXTRA_DIST=$(WAD_SRC)

@@ -4,8 +4,12 @@ AC_CONFIG_HEADER(config.h)
 AC_CONFIG_AUX_DIR(autotools)
 AC_CONFIG_MACRO_DIR(autotools)
 
+m4_include([autotools/ax_prog_cc_for_build.m4])
+m4_include([autotools/sdl.m4])
+
 dnl --- Check for target system type - before initialising Automake
 AC_CANONICAL_TARGET
+AC_CANONICAL_BUILD
 
 dnl --- Fire up automake
 AM_INIT_AUTOMAKE([check-news foreign -Woverride -Wobsolete -Wportability -Wsyntax -Wunsupported])
@@ -24,6 +28,7 @@ AC_DEFINE_UNQUOTED(DOOMWADDIR,"$DOOMWADDIR",[Define to be the path where Doom WA
 
 dnl --- Check for programs
 AC_PROG_CC
+AX_PROG_CC_FOR_BUILD
 AC_PROG_LN_S
 AC_PROG_RANLIB
 AC_GNU_SOURCE
@@ -36,6 +41,12 @@ else
   echo '    structures to be packed with your compiler. You may have to edit'
   echo '    the source to insert the relevant pragmas so structures are packed.'
 fi
+
+dnl Put a plausible default for CC_FOR_BUILD in Makefile.in
+if test -z "$CC_FOR_BUILD"; then
+ CC_FOR_BUILD=gcc
+fi
+AC_SUBST(CC_FOR_BUILD)
 
 dnl --- cph: work out flags to pass to compiler
 CFLAGS_OPT="-O2 -fomit-frame-pointer"
@@ -86,16 +97,16 @@ AC_CHECK_FUNC(stricmp,,AC_DEFINE(stricmp,strcasecmp,[Define to strcasecmp, if we
 AC_CHECK_FUNC(strnicmp,,AC_DEFINE(strnicmp,strncasecmp,[Define to strncasecmp, if we have it]))
 AC_CHECK_FUNC(min,AC_DEFINE(MIN,min,[If your platform has a fast version of min, define MIN to it]),)
 AC_CHECK_FUNC(max,AC_DEFINE(MAX,max,[If your platform has a fast version of max, define MAX to it]),)
-AC_CHECK_FUNCS(getopt inet_aton inet_pton inet_ntop mmap usleep sched_setaffinity)
+AC_CHECK_FUNCS(getopt inet_aton inet_pton inet_ntop mmap usleep sched_setaffinity strlwr)
 
 dnl --- Check for libraries
 dnl --- cph: we need pow(3) in SDL/i_sound.c; on some systems it gets pulled
 dnl ---  in by other libraries, but we can't rely on that.
 AC_CHECK_LIB(m,pow)
 dnl - system specific stuff
-case "$target" in
+case "$host" in
     *-*-cygwin* | *-*-mingw32*)
-        SYS_GL_LIBS="-lopengl32"
+        SYS_GL_LIBS="-lopengl32 -lglu32"
         ;;
     *-*-beos*)
         SYS_GL_LIBS="-lGL -lGLU"
@@ -104,6 +115,8 @@ case "$target" in
         if test x$ac_cv_prog_gcc = xyes; then
             CFLAGS="$CFLAGS -mthreads"
         fi
+        ;;
+    arm-*-eabi*)
         ;;
     *)
 	SYS_GL_LIBS="-lGL -lGLU"
