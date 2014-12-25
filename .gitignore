@@ -1,6 +1,6 @@
 .svn
 */.svn*
-build
+build*
 ICONS/Makefile.in
 Makefile.in
 VisualC6/Makefile.in
