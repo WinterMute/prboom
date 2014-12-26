@@ -6,7 +6,7 @@
 #
 #
 
-SUBDIRS = SDL POSIX MAC
+SUBDIRS = POSIX MAC
 
 gamesdir=$(prefix)/games
 
@@ -16,7 +16,12 @@ else
 games_PROGRAMS = prboom
 endif
 
-CFLAGS = @CFLAGS@ @SDL_CFLAGS@
+CFLAGS = @CFLAGS@
+
+if BUILD_SDL
+CFLAGS  += @SDL_CFLAGS@
+SUBDIRS += SDL
+endif
 
 prboom_game_server_SOURCES = d_server.c protocol.h
 prboom_game_server_LDADD = POSIX/libposixdoom.a SDL/i_network.o @NET_LIBS@ @SDL_LIBS@
@@ -61,7 +66,7 @@ NET_CLIENT_SRC = d_client.c
 if BUILD_GL
 USE_GL_SRC = gl_intern.h  gl_main.c  gl_struct.h  gl_texture.c
 else
-USE_GL_SRC = 
+USE_GL_SRC =
 endif
 
 if WAD_MMAP
@@ -70,8 +75,12 @@ else
 WAD_SRC = w_memcache.c
 endif
 
+if BUILD_SDL
+MAIN_LIB = SDL/libsdldoom.a
+endif
+
 prboom_SOURCES = mmus2mid.c mmus2mid.h $(COMMON_SRC) $(NET_CLIENT_SRC) $(USE_GL_SRC) $(WAD_SRC)
-prboom_LDADD = SDL/libsdldoom.a @MIXER_LIBS@ @NET_LIBS@ @SDL_LIBS@ @GL_LIBS@ @MATH_LIB@
+prboom_LDADD = $(MAIN_LIB) @MIXER_LIBS@ @NET_LIBS@ @SDL_LIBS@ @GL_LIBS@ @MATH_LIB@
 
 EXTRA_DIST = \
  r_drawcolumn.inl r_drawflush.inl r_drawspan.inl r_drawcolpipeline.inl

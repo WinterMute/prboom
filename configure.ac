@@ -75,7 +75,7 @@ AC_CPU_OPTIMISATIONS
 
 dnl --- some defaults for CFLAGS
 AC_C_COMPILE_FLAGS($CFLAGS_OPT)
-dnl -Wmissing-prototypes -Wmissing-declarations 
+dnl -Wmissing-prototypes -Wmissing-declarations
 CFLAGS="$CFLAGS -I\$(top_srcdir)/src"
 
 dnl --- Compiler characteristics
@@ -147,58 +147,75 @@ then
 fi
 AM_CONDITIONAL(BUILD_GL,test "$enable_gl" = "yes")
 
-dnl - SDL
-AM_PATH_SDL(1.1.3, sdl_main="yes")
-if test "$sdl_main" != "yes"
-then
- AC_MSG_ERROR([*** You must have the SDL libraries installed before you can compile prboom
- *** See http://prboom.sourceforge.net/linux.html
- ])
-fi
 
-savelibs="$LIBS"
-LIBS="$LIBS $SDL_LIBS"
-AC_CHECK_FUNCS(SDL_JoystickGetAxis)
-LIBS="$savelibs"
+dnl check sdl libraries
+CheckSDL()
+{
 
-AC_ARG_WITH([mixer],
-  AC_HELP_STRING([--without-mixer],[Do not use SDL_mixer even if available]),
-  [], [with_mixer=yes])
-AS_IF([test "x$with_mixer" != xno],
-  AC_CHECK_LIB(SDL_mixer,Mix_OpenAudio,[],[],[$SDL_LIBS $MIXER_LIBS]))
+  AM_PATH_SDL(1.1.3, sdl_main="yes")
+  if test "$sdl_main" != "yes"
+  then
+   AC_MSG_ERROR([*** You must have the SDL libraries installed before you can compile prboom
+                 *** See http://prboom.sourceforge.net/linux.html ])
+  fi
 
-AC_ARG_WITH(net,
-  AS_HELP_STRING([--without-net],[Do not use SDL_net even if available]),
-  [], [with_net=yes])
-AS_IF([test "x$with_net" = xno],
-  [
-    dnl -- Networking was disabled by the user.
-    NET_LIBS=
-  ],[
-    dnl -- Check for networking support
-    AC_CHECK_LIB(SDL_net,SDLNet_UDP_Bind,[
-      AC_DEFINE(HAVE_NET,1,[Define if you want network game support])
-      AC_DEFINE(HAVE_LIBSDL_NET,1,
-        [Define if you have the SDL net library -lSDL_net])
-      AC_DEFINE(USE_SDL_NET,1,[Define if you want to use the SDL net lib])
-      NET_LIBS=-lSDL_net
-      sdl_net=yes
-      save_CFLAGS="$CFLAGS"
-      CFLAGS="$CFLAGS $SDL_CFLAGS"
-      AC_TRY_COMPILE([
-          #include "SDL_net.h"
-          ],[
-          UDPpacket *p;
-          int n = sizeof(p->src);
-          ],
-          AC_DEFINE(SDL_NET_UDP_PACKET_SRC,1,[Define if you have an old SDL_net, such that the UDPpacket structure has a src member instead of an address member]))
-      CFLAGS="$save_CFLAGS"
+  savelibs="$LIBS"
+  LIBS="$LIBS $SDL_LIBS"
+  AC_CHECK_FUNCS(SDL_JoystickGetAxis)
+  LIBS="$savelibs"
+
+  AC_ARG_WITH([mixer],
+    AC_HELP_STRING([--without-mixer],[Do not use SDL_mixer even if available]),
+    [], [with_mixer=yes])
+  AS_IF([test "x$with_mixer" != xno],
+    AC_CHECK_LIB(SDL_mixer,Mix_OpenAudio,[],[],[$SDL_LIBS $MIXER_LIBS]))
+
+  AC_ARG_WITH(net,
+    AS_HELP_STRING([--without-net],[Do not use SDL_net even if available]),
+    [], [with_net=yes])
+  AS_IF([test "x$with_net" = xno],
+    [
+      dnl -- Networking was disabled by the user.
+      NET_LIBS=
     ],[
-      dnl -- Warn if networking support was not disabled but sdlnet is missing
-      AC_MSG_WARN([*** SDL networking library not found. The game will not be compiled with network game support.])
-    ],$SDL_LIBS)
+      dnl -- Check for networking support
+      AC_CHECK_LIB(SDL_net,SDLNet_UDP_Bind,[
+        AC_DEFINE(HAVE_NET,1,[Define if you want network game support])
+        AC_DEFINE(HAVE_LIBSDL_NET,1,
+          [Define if you have the SDL net library -lSDL_net])
+        AC_DEFINE(USE_SDL_NET,1,[Define if you want to use the SDL net lib])
+        NET_LIBS=-lSDL_net
+        sdl_net=yes
+        save_CFLAGS="$CFLAGS"
+        CFLAGS="$CFLAGS $SDL_CFLAGS"
+        AC_TRY_COMPILE([
+            #include "SDL_net.h"
+            ],[
+            UDPpacket *p;
+            int n = sizeof(p->src);
+            ],
+            AC_DEFINE(SDL_NET_UDP_PACKET_SRC,1,[Define if you have an old SDL_net, such that the UDPpacket structure has a src member instead of an address member]))
+        CFLAGS="$save_CFLAGS"
+      ],[
+        dnl -- Warn if networking support was not disabled but sdlnet is missing
+        AC_MSG_WARN([*** SDL networking library not found. The game will not be compiled with network game support.])
+      ],$SDL_LIBS)
+    ])
+}
+
+AC_ARG_WITH([sdl],
+  AC_HELP_STRING([--without-sdl],[Do not use SDL even if available]),
+  [], [with_sdl=yes])
+AS_IF([test "x$with_sdl" = xno],
+  [
+    dnl -- sdl was disabled by the user
+  ],[
+    CheckSDL
   ])
+
 AM_CONDITIONAL(BUILD_SERVER, [test "$sdl_net" = "yes"])
+AM_CONDITIONAL(BUILD_SDL, [test "$with_sdl" = "yes"])
+
 
 dnl - Other libs
 AC_ARG_WITH([png], AC_HELP_STRING([--without-png], [Do not use libpng even if available]),,with_png=yes)
