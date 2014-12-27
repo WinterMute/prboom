@@ -110,6 +110,10 @@ AC_ARG_WITH([platform],
   AC_HELP_STRING([--with-platform],[build for specific platform]),
   [], [with_platform=default])
 
+AC_ARG_WITH([sdl],
+  AC_HELP_STRING([--without-sdl],[Do not use SDL even if available]),
+  [], [with_sdl=yes])
+
 case "$host" in
     *-*-cygwin* | *-*-mingw32*)
         SYS_GL_LIBS="-lopengl32 -lglu32"
@@ -126,10 +130,12 @@ case "$host" in
         if test x$with_platform = x3ds; then
             CFLAGS="$CFLAGS -march=armv6k -mtune=mpcore -mfloat-abi=hard -mword-relocations"
             LDFLAGS="$LDFLAGS -specs=3dsx.specs"
+            with_sdl=no
         fi
         if test x$with_platform = xnds; then
             CFLAGS="$CFLAGS -marm -mthumb-interwork -march=armv5te -mtune=arm946e-s"
             LDFLAGS="$LDFLAGS -specs=ds_arm9.specs"
+            with_sdl=no
         fi
         ;;
     *)
@@ -217,9 +223,6 @@ CheckSDL()
     ])
 }
 
-AC_ARG_WITH([sdl],
-  AC_HELP_STRING([--without-sdl],[Do not use SDL even if available]),
-  [], [with_sdl=yes])
 AS_IF([test "x$with_sdl" = xno],
   [
     dnl -- sdl was disabled by the user
