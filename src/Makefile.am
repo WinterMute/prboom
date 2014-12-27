@@ -100,5 +100,22 @@ endif
 prboom_SOURCES = mmus2mid.c mmus2mid.h $(COMMON_SRC) $(NET_CLIENT_SRC) $(USE_GL_SRC) $(WAD_SRC)
 prboom_LDADD = $(MAIN_LIB) @MIXER_LIBS@ @NET_LIBS@ @SDL_LIBS@ @GL_LIBS@ $(EXTRA_LIBS) @MATH_LIB@
 
+if BUILD_NDS
+all-local: prboom.nds
+
+prboom.nds:	prboom
+	ndstool -c $@ -9 $< -b $(top_srcdir)/ICONS/prboom.bmp "prboom ds;"
+endif
+
+if BUILD_3DS
+all-local: prboom.3dsx
+
+prboom.smdh:
+	smdhtool --create "prboom 3DS" "port of prboom to 3DS" "WinterMute" $(top_srcdir)/ICONS/prboom.png $@
+
+prboom.3dsx:	prboom.smdh prboom
+	3dsxtool $@ prboom
+endif
+
 EXTRA_DIST = \
  r_drawcolumn.inl r_drawflush.inl r_drawspan.inl r_drawcolpipeline.inl
