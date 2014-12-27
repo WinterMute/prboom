@@ -282,7 +282,8 @@ const char *I_DoomExeDir(void)
   static char *base;
   if (!base)        // cache multiple requests
     {
-      char *home = getenv("HOME");
+//      char *home = getenv("HOME");
+      char *home = "./";
       size_t len = strlen(home);
 
       base = malloc(len + strlen(prboom_dir) + 1);
