@@ -18,6 +18,7 @@ rdatawad$(BUILD_EXEEXT) : $(rdatawad_OBJECTS)
 
 $(rdatawad_OBJECTS) : CC=$(CC_FOR_BUILD)
 $(rdatawad_OBJECTS) : CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
+$(rdatawad_OBJECTS) : CFLAGS=$(CFLAGS_FOR_BUILD)
 
 waddir=$(DOOMWADDIR)
 wad_DATA=prboom.wad
