@@ -62,6 +62,8 @@
 
 #include <3ds.h>
 
+#include "prboomGfx.h"
+
 /* Most of the following has been rewritten by Lee Killough
  *
  * I_GetTime
@@ -69,7 +71,7 @@
  * cphipps - much made static
  */
 
-int realtic_clock_rate = 100;
+int realtic_clock_rate = 1000;
 static int_64_t I_GetTime_Scale = 1<<24;
 
 static int I_GetTime_Scaled(void)
@@ -403,8 +405,12 @@ static void I_Quit (void)
 int main(int argc, char **argv)
 {
 
-  gfxInit();
+  prboomGfxInit();
   consoleInit(GFX_BOTTOM, NULL);
+  gfxSetScreenFormat(GFX_TOP,GSP_RGBA8_OES);
+  gfxSwapBuffers();
+  gfxFlushBuffers();
+  gspWaitForVBlank();
 
   myargc = argc;
   myargv = (const char * const *) argv;
