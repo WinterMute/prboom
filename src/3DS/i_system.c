@@ -95,8 +95,12 @@
 #include "config.h"
 #endif
 
-static unsigned int start_displaytime;
-static unsigned int displaytime;
+#include <3ds/types.h>
+#include <3ds/os.h>
+#include <3ds/svc.h>
+
+static u64 start_displaytime;
+static u64 displaytime;
 static boolean InDisplay = false;
 
 boolean I_StartDisplay(void)
@@ -104,29 +108,28 @@ boolean I_StartDisplay(void)
   if (InDisplay)
     return false;
 
-//  start_displaytime = SDL_GetTicks();
+  start_displaytime = osGetTime();
   InDisplay = true;
   return true;
 }
 
 void I_EndDisplay(void)
 {
-//  displaytime = SDL_GetTicks() - start_displaytime;
+  displaytime = osGetTime() - start_displaytime;
   InDisplay = false;
 }
 
 void I_uSleep(unsigned long usecs)
 {
-//    SDL_Delay(usecs/1000);
+    svcSleepThread(usecs * 1000);
 }
 
 int ms_to_next_tick;
 
 int I_GetTime_RealTime (void)
 {
-//  int t = SDL_GetTicks();
-  int t;
-  int i = t*(TICRATE/5)/200;
+  u64 t = osGetTime();
+  u64 i = t*(TICRATE/5)/200;
   ms_to_next_tick = (i+1)*200/(TICRATE/5) - t;
   if (ms_to_next_tick > 1000/TICRATE || ms_to_next_tick<1) ms_to_next_tick = 1;
   return i;
@@ -138,7 +141,7 @@ fixed_t I_GetTimeFrac (void)
   unsigned long now;
   fixed_t frac;
 
-//  now = SDL_GetTicks();
+  now = osGetTime();
 
   if (tic_vars.step == 0)
     return FRACUNIT;
@@ -172,7 +175,7 @@ void I_GetTime_SaveMS(void)
 unsigned long I_GetRandomTimeSeed(void)
 {
 /* This isnt very random */
-//  return(SDL_GetTicks());
+  return(osGetTime());
 }
 
 /* cphipps - I_GetVersionString
@@ -283,7 +286,7 @@ const char *I_DoomExeDir(void)
   if (!base)        // cache multiple requests
     {
 //      char *home = getenv("HOME");
-      char *home = "./";
+      char *home = ".";
       size_t len = strlen(home);
 
       base = malloc(len + strlen(prboom_dir) + 1);
