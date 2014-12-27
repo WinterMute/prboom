@@ -129,12 +129,12 @@ case "$host" in
     arm-*-eabi*)
         if test x$with_platform = x3ds; then
             CFLAGS="$CFLAGS -march=armv6k -mtune=mpcore -mfloat-abi=hard -mword-relocations"
-            LDFLAGS="$LDFLAGS -specs=3dsx.specs"
+            LDFLAGS="$LDFLAGS -specs=3dsx.specs -Wl,-Map,prboom.map"
             with_sdl=no
         fi
         if test x$with_platform = xnds; then
             CFLAGS="$CFLAGS -marm -mthumb-interwork -march=armv5te -mtune=arm946e-s"
-            LDFLAGS="$LDFLAGS -specs=ds_arm9.specs"
+            LDFLAGS="$LDFLAGS -specs=ds_arm9.specs -Wl,-Map,prboom.map"
             with_sdl=no
         fi
         ;;
