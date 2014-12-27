@@ -23,6 +23,15 @@ CFLAGS  += @SDL_CFLAGS@
 SUBDIRS += SDL
 endif
 
+if BUILD_3DS
+SUBDIRS += 3DS
+LIBS_3DS = -L$(DEVKITPRO)/libctru/lib -lctru
+endif
+
+if BUILD_NDS
+SUBDIRS += NDS
+endif
+
 prboom_game_server_SOURCES = d_server.c protocol.h
 prboom_game_server_LDADD = POSIX/libposixdoom.a SDL/i_network.o @NET_LIBS@ @SDL_LIBS@
 
@@ -79,8 +88,16 @@ if BUILD_SDL
 MAIN_LIB = SDL/libsdldoom.a
 endif
 
+if BUILD_3DS
+MAIN_LIB = 3DS/lib3dsdoom.a
+endif
+
+if BUILD_NDS
+MAIN_LIB = NDS/libndsdoom.a
+endif
+
 prboom_SOURCES = mmus2mid.c mmus2mid.h $(COMMON_SRC) $(NET_CLIENT_SRC) $(USE_GL_SRC) $(WAD_SRC)
-prboom_LDADD = $(MAIN_LIB) @MIXER_LIBS@ @NET_LIBS@ @SDL_LIBS@ @GL_LIBS@ @MATH_LIB@
+prboom_LDADD = $(MAIN_LIB) @MIXER_LIBS@ @NET_LIBS@ @SDL_LIBS@ @GL_LIBS@ $(LIBS_3DS) @MATH_LIB@
 
 EXTRA_DIST = \
  r_drawcolumn.inl r_drawflush.inl r_drawspan.inl r_drawcolpipeline.inl

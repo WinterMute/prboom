@@ -103,7 +103,13 @@ dnl --- Check for libraries
 dnl --- cph: we need pow(3) in SDL/i_sound.c; on some systems it gets pulled
 dnl ---  in by other libraries, but we can't rely on that.
 AC_CHECK_LIB(m,pow)
+
 dnl - system specific stuff
+
+AC_ARG_WITH([platform],
+  AC_HELP_STRING([--with-platform],[build for specific platform]),
+  [], [with_platform=default])
+
 case "$host" in
     *-*-cygwin* | *-*-mingw32*)
         SYS_GL_LIBS="-lopengl32 -lglu32"
@@ -117,6 +123,14 @@ case "$host" in
         fi
         ;;
     arm-*-eabi*)
+        if test x$with_platform = x3ds; then
+            CFLAGS="$CFLAGS -march=armv6k -mtune=mpcore -mfloat-abi=hard -mword-relocations"
+            LDFLAGS="$LDFLAGS -specs=3dsx.specs"
+        fi
+        if test x$with_platform = xnds; then
+            CFLAGS="$CFLAGS -marm -mthumb-interwork -march=armv5te -mtune=arm946e-s"
+            LDFLAGS="$LDFLAGS -specs=ds_arm9.specs"
+        fi
         ;;
     *)
 	SYS_GL_LIBS="-lGL -lGLU"
@@ -215,7 +229,8 @@ AS_IF([test "x$with_sdl" = xno],
 
 AM_CONDITIONAL(BUILD_SERVER, [test "$sdl_net" = "yes"])
 AM_CONDITIONAL(BUILD_SDL, [test "$with_sdl" = "yes"])
-
+AM_CONDITIONAL(BUILD_3DS, [test "$with_platform" = "3ds"])
+AM_CONDITIONAL(BUILD_NDS, [test "$with_platform" = "nds"])
 
 dnl - Other libs
 AC_ARG_WITH([png], AC_HELP_STRING([--without-png], [Do not use libpng even if available]),,with_png=yes)
@@ -265,4 +280,4 @@ AC_SUBST(CFLAGS)
 AC_SUBST(DOOMWADDIR)
 
 dnl --- output
-AC_OUTPUT(Makefile src/Makefile src/POSIX/Makefile src/SDL/Makefile src/MAC/Makefile doc/Makefile data/Makefile ICONS/Makefile VisualC6/Makefile VisualC8/Makefile prboom.spec)
+AC_OUTPUT(Makefile src/Makefile src/POSIX/Makefile src/NDS/Makefile src/3DS/Makefile src/SDL/Makefile src/MAC/Makefile doc/Makefile data/Makefile ICONS/Makefile VisualC6/Makefile VisualC8/Makefile prboom.spec)
