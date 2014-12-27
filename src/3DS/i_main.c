@@ -57,7 +57,6 @@
 #include "r_fps.h"
 #include "lprintf.h"
 
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -125,20 +124,6 @@ void I_Init(void)
  */
 static void I_SignalHandler(int s)
 {
-  char buf[2048];
-
-  signal(s,SIG_IGN);  /* Ignore future instances of this signal.*/
-
-  strcpy(buf,"Exiting on signal: ");
-  I_SigString(buf+strlen(buf),2000-strlen(buf),s);
-
-  /* If corrupted memory could cause crash, dump memory
-   * allocation history, which points out probable causes
-   */
-  if (s==SIGSEGV || s==SIGILL || s==SIGFPE)
-    Z_DumpHistory(buf);
-
-  I_Error("I_SignalHandler: %s", buf);
 }
 
 
@@ -414,25 +399,12 @@ static void I_Quit (void)
   }
 }
 
-#ifdef SECURE_UID
-uid_t stored_euid = -1;
-#endif
-
 //int main(int argc, const char * const * argv)
 int main(int argc, char **argv)
 {
 
   gfxInit();
   consoleInit(GFX_BOTTOM, NULL);
-#ifdef SECURE_UID
-  /* First thing, revoke setuid status (if any) */
-  stored_euid = geteuid();
-  if (getuid() != stored_euid)
-    if (seteuid(getuid()) < 0)
-      fprintf(stderr, "Failed to revoke setuid\n");
-    else
-      fprintf(stderr, "Revoked uid %d\n",stored_euid);
-#endif
 
   myargc = argc;
   myargv = (const char * const *) argv;
@@ -469,14 +441,6 @@ int main(int argc, char **argv)
   Z_Init();                  /* 1/18/98 killough: start up memory stuff first */
 
   atexit(I_Quit);
-#ifndef _DEBUG
-  signal(SIGSEGV, I_SignalHandler);
-  signal(SIGTERM, I_SignalHandler);
-  signal(SIGFPE,  I_SignalHandler);
-  signal(SIGILL,  I_SignalHandler);
-  signal(SIGINT,  I_SignalHandler);  /* killough 3/6/98: allow CTRL-BRK during init */
-  signal(SIGABRT, I_SignalHandler);
-#endif
 
   I_SetAffinityMask();
 
