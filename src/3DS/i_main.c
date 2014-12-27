@@ -61,6 +61,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <3ds.h>
+
 /* Most of the following has been rewritten by Lee Killough
  *
  * I_GetTime
@@ -419,6 +421,9 @@ uid_t stored_euid = -1;
 //int main(int argc, const char * const * argv)
 int main(int argc, char **argv)
 {
+
+  gfxInit();
+  consoleInit(GFX_BOTTOM, NULL);
 #ifdef SECURE_UID
   /* First thing, revoke setuid status (if any) */
   stored_euid = geteuid();
