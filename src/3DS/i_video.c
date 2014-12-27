@@ -46,7 +46,9 @@
 
 typedef  uint8_t Uint8;
 
-//#include "SDL.h"
+#include <3ds/types.h>
+#include <3ds/gfx.h>
+
 
 #include "m_argv.h"
 #include "doomstat.h"
@@ -77,7 +79,6 @@ int use_doublebuffer = 1; // Included not to break m_misc, but not relevant to S
 #endif
 int use_fullscreen;
 int desired_fullscreen;
-static SDL_Surface *screen;
 
 ////////////////////////////////////////////////////////////////////////////
 // Input code
@@ -294,20 +295,21 @@ static void I_InitInputs(void)
 ///////////////////////////////////////////////////////////
 // Palette stuff.
 //
+static u32* palettes;
+static u32 currentPalette;
+
 static void I_UploadNewPalette(int pal)
 {
   // This is used to replace the current 256 colour cmap with a new one
   // Used by 256 colour PseudoColor modes
 
-  // Array of SDL_Color structs used for setting the 256-colour palette
-/*  static SDL_Color* colours;
   static int cachedgamma;
   static size_t num_pals;
 
   if (V_GetMode() == VID_MODEGL)
     return;
 
-  if ((colours == NULL) || (cachedgamma != usegamma)) {
+  if ((palettes == NULL) || (cachedgamma != usegamma)) {
     int pplump = W_GetNumForName("PLAYPAL");
     int gtlump = (W_CheckNumForName)("GAMMATBL",ns_prboom);
     register const byte * palette = W_CacheLumpNum(pplump);
@@ -317,16 +319,14 @@ static void I_UploadNewPalette(int pal)
     num_pals = W_LumpLength(pplump) / (3*256);
     num_pals *= 256;
 
-    if (!colours) {
+    if (!palettes) {
       // First call - allocate and prepare colour array
-      colours = malloc(sizeof(*colours)*num_pals);
+      palettes = malloc(sizeof(*palettes)*num_pals);
     }
 
     // set the colormap entries
     for (i=0 ; (size_t)i<num_pals ; i++) {
-      colours[i].r = gtable[palette[0]];
-      colours[i].g = gtable[palette[1]];
-      colours[i].b = gtable[palette[2]];
+      palettes[i] = (gtable[palette[0]] << 24) + (gtable[palette[1]] << 16) + (gtable[palette[2]] << 8) + 0xff;
       palette += 3;
     }
 
@@ -342,12 +342,8 @@ static void I_UploadNewPalette(int pal)
 #endif
 
   // store the colors to the current display
-  // SDL_SetColors(SDL_GetVideoSurface(), colours+256*pal, 0, 256);
-  SDL_SetPalette(
-      SDL_GetVideoSurface(),
-      SDL_LOGPAL | SDL_PHYSPAL,
-      colours+256*pal, 0, 256);
-*/}
+  currentPalette = 256 * pal;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // Graphics API
@@ -371,47 +367,36 @@ static int newpal = 0;
 
 void I_FinishUpdate (void)
 {
-/*#ifdef MONITOR_VISIBILITY
-  if (!(SDL_GetAppState()&SDL_APPACTIVE)) {
-    return;
-  }
-#endif
-
-#ifdef GL_DOOM
-  if (V_GetMode() == VID_MODEGL) {
-    // proff 04/05/2000: swap OpenGL buffers
-    gld_Finish();
-    return;
-  }
-#endif
-  if (SDL_MUSTLOCK(screen)) {
-      int h;
-      byte *src;
-      byte *dest;
-
-      if (SDL_LockSurface(screen) < 0) {
-        lprintf(LO_INFO,"I_FinishUpdate: %s\n", SDL_GetError());
-        return;
-      }
-      dest=screen->pixels;
-      src=screens[0].data;
-      h=screen->h;
-      for (; h>0; h--)
-      {
-        memcpy(dest,src,SCREENWIDTH*V_GetPixelDepth());
-        dest+=screen->pitch;
-        src+=screens[0].byte_pitch;
-      }
-      SDL_UnlockSurface(screen);
-  }
   /* Update the display buffer (flipping video pages if supported)
    * If we need to change palette, that implicitely does a flip */
-/*  if (newpal != NO_PALETTE_CHANGE) {
+  if (newpal != NO_PALETTE_CHANGE) {
     I_UploadNewPalette(newpal);
     newpal = NO_PALETTE_CHANGE;
   }
-  SDL_Flip(screen);
-*/}
+  //dest=screen->pixels;
+  int height=screens[0].height;
+  int width=screens[0].width;
+
+  u32* bufAdr=(u32*)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+  int w, h;
+
+  for (w=0; w<width; w++)
+  {
+    u32 *dest=&bufAdr[240*w + 239];
+    u8 *src=screens[0].data + w;
+
+    for (h=0; h<height; h++)
+    {
+        *(dest--)=palettes[(*src) + currentPalette];
+        src += screens[0].byte_pitch;
+    }
+
+  }
+  gfxSwapBuffers();
+  gfxFlushBuffers();
+  gspWaitForVBlank();
+
+}
 
 //
 // I_ScreenShot
@@ -425,29 +410,6 @@ void I_FinishUpdate (void)
 
 int I_ScreenShot (const char *fname)
 {
-#ifdef GL_DOOM
-  if (V_GetMode() == VID_MODEGL)
-  {
-    int result = -1;
-    unsigned char *pixel_data = gld_ReadScreen();
-
-    if (pixel_data)
-    {
-      SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(
-          pixel_data, SCREENWIDTH, SCREENHEIGHT, 24, SCREENWIDTH*3,
-          0x000000ff, 0x0000ff00, 0x00ff0000, 0);
-
-      if (surface)
-      {
-        result = SAVE_PNG_OR_BMP(surface, fname);
-        SDL_FreeSurface(surface);
-      }
-      free(pixel_data);
-    }
-    return result;
-  }
-  else
-#endif
 //  return SAVE_PNG_OR_BMP(SDL_GetVideoSurface(), fname);
 	return 0;
 }
@@ -464,32 +426,10 @@ void I_SetPalette (int pal)
 
 static void I_ShutdownSDL(void)
 {
-//  SDL_Quit();
-  return;
 }
 
 void I_PreInitGraphics(void)
 {
-/*  static const union {
-    const char *c;
-    char *s;
-  } window_pos = {"SDL_VIDEO_WINDOW_POS=center"};
-
-  unsigned int flags = 0;
-
-  putenv(window_pos.s);
-
-  // Initialize SDL
-  if (!(M_CheckParm("-nodraw") && M_CheckParm("-nosound")))
-    flags = SDL_INIT_VIDEO;
-#ifdef _DEBUG
-  flags |= SDL_INIT_NOPARACHUTE;
-#endif
-  if ( SDL_Init(flags) < 0 ) {
-    I_Error("Could not initialize SDL [%s]", SDL_GetError());
-  }
-
-  atexit(I_ShutdownSDL);
 }
 
 // e6y
@@ -498,50 +438,7 @@ void I_PreInitGraphics(void)
 // It should be used only for fullscreen modes.
 static void I_ClosestResolution (int *width, int *height, int flags)
 {
-  SDL_Rect **modes;
-  int twidth, theight;
-  int cwidth = 0, cheight = 0;
-//  int iteration;
-  int i;
-  unsigned int closest = UINT_MAX;
-  unsigned int dist;
-
-  modes = SDL_ListModes(NULL, flags);
-
-  //for (iteration = 0; iteration < 2; iteration++)
-  {
-    for(i=0; modes[i]; ++i)
-    {
-      twidth = modes[i]->w;
-      theight = modes[i]->h;
-
-      if (twidth > MAX_SCREENWIDTH || theight> MAX_SCREENHEIGHT)
-        continue;
-
-      if (twidth == *width && theight == *height)
-        return;
-
-      //if (iteration == 0 && (twidth < *width || theight < *height))
-      //  continue;
-
-      dist = (twidth - *width) * (twidth - *width) +
-             (theight - *height) * (theight - *height);
-
-      if (dist < closest)
-      {
-        closest = dist;
-        cwidth = twidth;
-        cheight = theight;
-      }
-    }
-    if (closest != UINT_MAX)
-    {
-      *width = cwidth;
-      *height = cheight;
-      return;
-    }
-  }
-*/}
+}
 
 // CPhipps -
 // I_CalculateRes
@@ -554,27 +451,13 @@ void I_CalculateRes(unsigned int width, unsigned int height)
   SCREENHEIGHT = (height+3) & ~3;
   */
 
-// e6y
-// GLBoom will try to set the closest supported resolution
-// if the requested mode can't be set correctly.
-// For example glboom.exe -geom 1025x768 -nowindow will set 1024x768.
-// It affects only fullscreen modes.
-/*  if (V_GetMode() == VID_MODEGL) {
-    if ( desired_fullscreen )
-    {
-      I_ClosestResolution(&width, &height, SDL_OPENGL|SDL_FULLSCREEN);
-    }
-    SCREENWIDTH = width;
-    SCREENHEIGHT = height;
-    SCREENPITCH = SCREENWIDTH;
-  } else {
     SCREENWIDTH = width;
     SCREENHEIGHT = height;
     SCREENPITCH = (width * V_GetPixelDepth() + 3) & ~3;
     if (!(SCREENPITCH % 1024))
       SCREENPITCH += 32;
-  }
-*/}
+
+}
 
 // CPhipps -
 // I_SetRes
@@ -613,6 +496,10 @@ void I_InitGraphics(void)
   {
     firsttime = 0;
 
+	SCREENWIDTH = 400;
+	SCREENHEIGHT = 240;
+	SCREENPITCH = 400;
+
     atexit(I_ShutdownGraphics);
     lprintf(LO_INFO, "I_InitGraphics: %dx%d\n", SCREENWIDTH, SCREENHEIGHT);
 
@@ -632,28 +519,7 @@ void I_InitGraphics(void)
 
 int I_GetModeFromString(const char *modestr)
 {
-  video_mode_t mode;
-  mode = VID_MODE16;
-/*  if (!stricmp(modestr,"15")) {
-    mode = VID_MODE15;
-  } else if (!stricmp(modestr,"15bit")) {
-    mode = VID_MODE15;
-  } else if (!stricmp(modestr,"16")) {
-    mode = VID_MODE16;
-  } else if (!stricmp(modestr,"16bit")) {
-    mode = VID_MODE16;
-  } else if (!stricmp(modestr,"32")) {
-    mode = VID_MODE32;
-  } else if (!stricmp(modestr,"32bit")) {
-    mode = VID_MODE32;
-  } else if (!stricmp(modestr,"gl")) {
-    mode = VID_MODEGL;
-  } else if (!stricmp(modestr,"OpenGL")) {
-    mode = VID_MODEGL;
-  } else {
-    mode = VID_MODE8;
-  }
-*/  return mode;
+  return VID_MODE8;
 }
 
 void I_UpdateVideoMode(void)
@@ -675,96 +541,13 @@ void I_UpdateVideoMode(void)
 
   I_SetRes();
 
-  // Initialize SDL with this graphics mode
-/*  if (V_GetMode() == VID_MODEGL) {
-    init_flags = SDL_OPENGL;
-  } else {
-    if (use_doublebuffer)
-      init_flags = SDL_DOUBLEBUF;
-    else
-      init_flags = SDL_SWSURFACE;
-#ifndef _DEBUG
-    init_flags |= SDL_HWPALETTE;
-#endif
-  }
-
-  if ( desired_fullscreen )
-    init_flags |= SDL_FULLSCREEN;
-
-  if (V_GetMode() == VID_MODEGL) {
-    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ACCUM_RED_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ACCUM_GREEN_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ACCUM_BLUE_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ACCUM_ALPHA_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-    SDL_GL_SetAttribute( SDL_GL_BUFFER_SIZE, gl_colorbuffer_bits );
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, gl_depthbuffer_bits );
-    screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, gl_colorbuffer_bits, init_flags);
-  } else {
-    screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, V_GetNumPixelBits(), init_flags);
-  }
-
-  if(screen == NULL) {
-    I_Error("Couldn't set %dx%d video mode [%s]", SCREENWIDTH, SCREENHEIGHT, SDL_GetError());
-  }
-
-  lprintf(LO_INFO, "I_UpdateVideoMode: 0x%x, %s, %s\n", init_flags, screen->pixels ? "SDL buffer" : "own buffer", SDL_MUSTLOCK(screen) ? "lock-and-copy": "direct access");
-
-  // Get the info needed to render to the display
-  if (!SDL_MUSTLOCK(screen))
-  {
-    screens[0].not_on_heap = true;
-    screens[0].data = (unsigned char *) (screen->pixels);
-    screens[0].byte_pitch = screen->pitch;
-    screens[0].short_pitch = screen->pitch / V_GetModePixelDepth(VID_MODE16);
-    screens[0].int_pitch = screen->pitch / V_GetModePixelDepth(VID_MODE32);
-  }
-  else
-  {
-    screens[0].not_on_heap = false;
-  }
+  screens[0].not_on_heap = false;
+  screens[0].width = 400;
+  screens[0].height = 240;
+  screens[0].byte_pitch = 400;
+  screens[0].short_pitch = 200;
+  screens[0].int_pitch = 100;
 
   V_AllocScreens();
-
-  // Hide pointer while over this window
-  SDL_ShowCursor(0);
-
-  I_PrepareMouse(1);
-
   R_InitBuffer(SCREENWIDTH, SCREENHEIGHT);
-
-  if (V_GetMode() == VID_MODEGL) {
-    int temp;
-    lprintf(LO_INFO,"SDL OpenGL PixelFormat:\n");
-    SDL_GL_GetAttribute( SDL_GL_RED_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_RED_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_GREEN_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_GREEN_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_BLUE_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_BLUE_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_STENCIL_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_STENCIL_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_ACCUM_RED_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_ACCUM_RED_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_ACCUM_GREEN_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_ACCUM_GREEN_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_ACCUM_BLUE_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_ACCUM_BLUE_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_ACCUM_ALPHA_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_ACCUM_ALPHA_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_DOUBLEBUFFER, &temp );
-    lprintf(LO_INFO,"    SDL_GL_DOUBLEBUFFER: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_BUFFER_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_BUFFER_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_DEPTH_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_DEPTH_SIZE: %i\n",temp);
-#ifdef GL_DOOM
-    gld_Init(SCREENWIDTH, SCREENHEIGHT);
-#endif
-  }
-*/}
+}
