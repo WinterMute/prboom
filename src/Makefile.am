@@ -25,11 +25,12 @@ endif
 
 if BUILD_3DS
 SUBDIRS += 3DS
-LIBS_3DS = -L$(DEVKITPRO)/libctru/lib -lctru
+EXTRA_LIBS = -L$(DEVKITPRO)/libctru/lib -lctru
 endif
 
 if BUILD_NDS
 SUBDIRS += NDS
+EXTRA_LIBS = -L$(DEVKITPRO)/libnds/lib -lfat -lnds9
 endif
 
 prboom_game_server_SOURCES = d_server.c protocol.h
@@ -97,7 +98,7 @@ MAIN_LIB = NDS/libndsdoom.a
 endif
 
 prboom_SOURCES = mmus2mid.c mmus2mid.h $(COMMON_SRC) $(NET_CLIENT_SRC) $(USE_GL_SRC) $(WAD_SRC)
-prboom_LDADD = $(MAIN_LIB) @MIXER_LIBS@ @NET_LIBS@ @SDL_LIBS@ @GL_LIBS@ $(LIBS_3DS) @MATH_LIB@
+prboom_LDADD = $(MAIN_LIB) @MIXER_LIBS@ @NET_LIBS@ @SDL_LIBS@ @GL_LIBS@ $(EXTRA_LIBS) @MATH_LIB@
 
 EXTRA_DIST = \
  r_drawcolumn.inl r_drawflush.inl r_drawspan.inl r_drawcolpipeline.inl
