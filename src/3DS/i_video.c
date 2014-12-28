@@ -48,7 +48,7 @@ typedef  uint8_t Uint8;
 
 #include <3ds/types.h>
 #include <3ds/gfx.h>
-
+#include <3ds/services/hid.h>
 
 #include "m_argv.h"
 #include "doomstat.h"
@@ -90,181 +90,93 @@ static boolean mouse_enabled; // usemouse, but can be overriden by -nomouse
 static boolean mouse_currently_grabbed;
 
 /////////////////////////////////////////////////////////////////////////////////
-// Keyboard handling
-
-//
-//  Translates the key currently in key
-//
-
-typedef int SDL_keysym;
-
-static int I_TranslateKey(SDL_keysym* key)
-{
-  int rc = 0;
-
-/*  switch (key->sym) {
-  case SDLK_LEFT: rc = KEYD_LEFTARROW;  break;
-  case SDLK_RIGHT:  rc = KEYD_RIGHTARROW; break;
-  case SDLK_DOWN: rc = KEYD_DOWNARROW;  break;
-  case SDLK_UP:   rc = KEYD_UPARROW;  break;
-  case SDLK_ESCAPE: rc = KEYD_ESCAPE; break;
-  case SDLK_RETURN: rc = KEYD_ENTER;  break;
-  case SDLK_TAB:  rc = KEYD_TAB;    break;
-  case SDLK_F1:   rc = KEYD_F1;   break;
-  case SDLK_F2:   rc = KEYD_F2;   break;
-  case SDLK_F3:   rc = KEYD_F3;   break;
-  case SDLK_F4:   rc = KEYD_F4;   break;
-  case SDLK_F5:   rc = KEYD_F5;   break;
-  case SDLK_F6:   rc = KEYD_F6;   break;
-  case SDLK_F7:   rc = KEYD_F7;   break;
-  case SDLK_F8:   rc = KEYD_F8;   break;
-  case SDLK_F9:   rc = KEYD_F9;   break;
-  case SDLK_F10:  rc = KEYD_F10;    break;
-  case SDLK_F11:  rc = KEYD_F11;    break;
-  case SDLK_F12:  rc = KEYD_F12;    break;
-  case SDLK_BACKSPACE:  rc = KEYD_BACKSPACE;  break;
-  case SDLK_DELETE: rc = KEYD_DEL;  break;
-  case SDLK_INSERT: rc = KEYD_INSERT; break;
-  case SDLK_PAGEUP: rc = KEYD_PAGEUP; break;
-  case SDLK_PAGEDOWN: rc = KEYD_PAGEDOWN; break;
-  case SDLK_HOME: rc = KEYD_HOME; break;
-  case SDLK_END:  rc = KEYD_END;  break;
-  case SDLK_PAUSE:  rc = KEYD_PAUSE;  break;
-  case SDLK_EQUALS: rc = KEYD_EQUALS; break;
-  case SDLK_MINUS:  rc = KEYD_MINUS;  break;
-  case SDLK_KP0:  rc = KEYD_KEYPAD0;  break;
-  case SDLK_KP1:  rc = KEYD_KEYPAD1;  break;
-  case SDLK_KP2:  rc = KEYD_KEYPAD2;  break;
-  case SDLK_KP3:  rc = KEYD_KEYPAD3;  break;
-  case SDLK_KP4:  rc = KEYD_KEYPAD4;  break;
-  case SDLK_KP5:  rc = KEYD_KEYPAD5;  break;
-  case SDLK_KP6:  rc = KEYD_KEYPAD6;  break;
-  case SDLK_KP7:  rc = KEYD_KEYPAD7;  break;
-  case SDLK_KP8:  rc = KEYD_KEYPAD8;  break;
-  case SDLK_KP9:  rc = KEYD_KEYPAD9;  break;
-  case SDLK_KP_PLUS:  rc = KEYD_KEYPADPLUS; break;
-  case SDLK_KP_MINUS: rc = KEYD_KEYPADMINUS;  break;
-  case SDLK_KP_DIVIDE:  rc = KEYD_KEYPADDIVIDE; break;
-  case SDLK_KP_MULTIPLY: rc = KEYD_KEYPADMULTIPLY; break;
-  case SDLK_KP_ENTER: rc = KEYD_KEYPADENTER;  break;
-  case SDLK_KP_PERIOD:  rc = KEYD_KEYPADPERIOD; break;
-  case SDLK_LSHIFT:
-  case SDLK_RSHIFT: rc = KEYD_RSHIFT; break;
-  case SDLK_LCTRL:
-  case SDLK_RCTRL:  rc = KEYD_RCTRL;  break;
-  case SDLK_LALT:
-  case SDLK_LMETA:
-  case SDLK_RALT:
-  case SDLK_RMETA:  rc = KEYD_RALT;   break;
-  case SDLK_CAPSLOCK: rc = KEYD_CAPSLOCK; break;
-  default:    rc = key->sym;    break;
-  }
-*/
-  return rc;
-
-}
-
-/////////////////////////////////////////////////////////////////////////////////
 // Main input code
 
-/* cph - pulled out common button code logic */
-static int I_SDLtoDoomMouseState(Uint8 buttonstate)
-{
-  return 0;
-/*      | (buttonstate & SDL_BUTTON(1) ? 1 : 0)
-      | (buttonstate & SDL_BUTTON(2) ? 2 : 0)
-      | (buttonstate & SDL_BUTTON(3) ? 4 : 0);
-*/}
-
-typedef int SDL_Event;
-
-static void I_GetEvent(SDL_Event *Event)
-{
-  event_t event;
-
-/*  switch (Event->type) {
-  case SDL_KEYDOWN:
-    event.type = ev_keydown;
-    event.data1 = I_TranslateKey(&Event->key.keysym);
-    D_PostEvent(&event);
-    break;
-
-  case SDL_KEYUP:
-  {
-    event.type = ev_keyup;
-    event.data1 = I_TranslateKey(&Event->key.keysym);
-    D_PostEvent(&event);
-  }
-  break;
-
-  case SDL_MOUSEBUTTONDOWN:
-  case SDL_MOUSEBUTTONUP:
-  if (mouse_enabled) // recognise clicks even if the pointer isn't grabbed
-  {
-    event.type = ev_mouse;
-    event.data1 = I_SDLtoDoomMouseState(SDL_GetMouseState(NULL, NULL));
-    event.data2 = event.data3 = 0;
-    D_PostEvent(&event);
-  }
-  break;
-
-  case SDL_MOUSEMOTION:
-  if (mouse_currently_grabbed) {
-    event.type = ev_mouse;
-    event.data1 = I_SDLtoDoomMouseState(Event->motion.state);
-    event.data2 = Event->motion.xrel << 5;
-    event.data3 = -Event->motion.yrel << 5;
-    D_PostEvent(&event);
-  }
-  break;
-
-
-  case SDL_QUIT:
-    S_StartSound(NULL, sfx_swtchn);
-    M_QuitDOOM(0);
-
-  default:
-    break;
-  }
-*/}
-
-//
-// I_PrepareMouse
-// Grab or ungrab the mouse pointer, and flush the mouse motion event queue
-//
-
-static void I_PrepareMouse(int force)
-{
-/*  boolean should_be_grabbed = mouse_enabled &&
-    !(paused || (gamestate != GS_LEVEL) || demoplayback || menuactive);
-
-  if (mouse_currently_grabbed != should_be_grabbed || force)
-  {
-    SDL_Event e;
-
-    mouse_currently_grabbed = should_be_grabbed;
-    SDL_WM_GrabInput(should_be_grabbed ? SDL_GRAB_ON : SDL_GRAB_OFF);
-
-    // Ignore spurious mouse motion events after a state change
-    SDL_PumpEvents();
-    while (SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_MOUSEMOTIONMASK) > 0) ;
-  }
-*/}
 
 //
 // I_StartTic
 //
+struct eventTranslate {
+  u32 buttonMask;
+  u32 doomKey;
+};
+
+struct eventTranslate gameKeyTable[] = {
+  { KEY_UP     , KEYD_UPARROW    },
+  { KEY_DOWN   , KEYD_DOWNARROW  },
+  { KEY_LEFT   , KEYD_LEFTARROW  },
+  { KEY_RIGHT  , KEYD_RIGHTARROW },
+  { KEY_START  , KEYD_ESCAPE     },
+  { KEY_SELECT , KEYD_ENTER      },
+  { KEY_A      , KEYD_RCTRL      },
+  { KEY_B      , KEYD_SPACEBAR   },
+  { KEY_L      , ','             },
+  { KEY_R      , '.'             },
+  { KEY_X      , KEYD_RSHIFT     }
+};
+
+int numGameKeys = sizeof(gameKeyTable) / sizeof(gameKeyTable[0]);
+
+struct eventTranslate menuKeyTable[] = {
+  { KEY_UP     , KEYD_UPARROW    },
+  { KEY_DOWN   , KEYD_DOWNARROW  },
+  { KEY_LEFT   , KEYD_LEFTARROW  },
+  { KEY_RIGHT  , KEYD_RIGHTARROW },
+  { KEY_START  , KEYD_ESCAPE     },
+  { KEY_SELECT , KEYD_ENTER      },
+  { KEY_A      , KEYD_ENTER      },
+  { KEY_B      , KEYD_ESCAPE     },
+  { KEY_L      , ','             },
+  { KEY_R      , '.'             },
+  { KEY_X      , KEYD_RSHIFT     },
+  { KEY_Y      , 'y'             }
+};
+
+int numMenuKeys = sizeof(menuKeyTable) / sizeof(menuKeyTable[0]);
+
+void translateKeys(evtype_t type, u32 mask, struct eventTranslate *table, int count)
+{
+  int i;
+
+  event_t event;
+  event.type = type;
+
+  for( i=0; i<count; i++)
+  {
+    if(mask & table[i].buttonMask)
+    {
+      event.data1 = table[i].doomKey;
+      D_PostEvent(&event);
+    }
+  }
+}
 
 void I_StartTic (void)
 {
-//  SDL_Event Event;
+  u32 kDown, kUp;
 
-  I_PrepareMouse(0);
+  struct eventTranslate *translateTable = gameKeyTable;
+  int numTranslations = numGameKeys;
 
-//  while ( SDL_PollEvent(&Event) )
-//    I_GetEvent(&Event);
+  if (menuactive)
+  {
+    translateTable = menuKeyTable;
+    numTranslations = numMenuKeys;
+  }
 
-  I_PollJoystick();
+  hidScanInput();
+
+  kDown = hidKeysDown();
+
+  translateKeys(ev_keydown, kDown, translateTable, numTranslations);
+
+  kUp   = hidKeysUp();
+
+  translateKeys(ev_keyup, kUp, gameKeyTable, numGameKeys);
+
+
+
+
 }
 
 //
@@ -285,11 +197,6 @@ static void I_InitInputs(void)
   // check if the user wants to use the mouse
   mouse_enabled = usemouse && !nomouse_parm;
 
-  // e6y: fix for turn-snapping bug on fullscreen in software mode
-//  if (!nomouse_parm)
-//    SDL_WarpMouse((unsigned short)(SCREENWIDTH/2), (unsigned short)(SCREENHEIGHT/2));
-
-  I_InitJoystick();
 }
 
 ///////////////////////////////////////////////////////////
