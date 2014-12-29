@@ -278,7 +278,7 @@ const char *I_DoomExeDir(void)
 #else
 // cph - V.Aguilar (5/30/99) suggested return ~/.lxdoom/, creating
 //  if non-existant
-static const char prboom_dir[] = {"/.prboom"}; // Mead rem extra slash 8/21/03
+static const char prboom_dir[] = {""}; // Mead rem extra slash 8/21/03
 
 const char *I_DoomExeDir(void)
 {
