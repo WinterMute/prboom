@@ -40,12 +40,15 @@
 #pragma interface
 #endif
 
+#include <stdint.h>
+
 enum column_pipeline_e {
   RDC_PIPELINE_STANDARD,
   RDC_PIPELINE_TRANSLUCENT,
   RDC_PIPELINE_TRANSLATED,
   RDC_PIPELINE_FUZZ,
   RDC_PIPELINE_MAXPIPELINES,
+  RDC_PIPELINE_PAD = UINT32_MAX
 };
 
 // Used to specify what kind of filering you want
@@ -54,15 +57,17 @@ enum draw_filter_type_e {
   RDRAW_FILTER_POINT,
   RDRAW_FILTER_LINEAR,
   RDRAW_FILTER_ROUNDED,
-  RDRAW_FILTER_MAXFILTERS
+  RDRAW_FILTER_MAXFILTERS,
+  RDRAW_FILTER_PAD = UINT32_MAX
 };
 
-// Used to specify what kind of column edge rendering to use on masked 
+// Used to specify what kind of column edge rendering to use on masked
 // columns. SQUARE = standard, SLOPED = slope the column edge up or down
 // based on neighboring columns
 enum sloped_edge_type_e {
   RDRAW_MASKEDCOLUMNEDGE_SQUARE,
-  RDRAW_MASKEDCOLUMNEDGE_SLOPED
+  RDRAW_MASKEDCOLUMNEDGE_SLOPED,
+  RDRAW_MASKEDCOLUMNEDGE_PAD = UINT32_MAX
 };
 
 // Packaged into a struct - POPE
