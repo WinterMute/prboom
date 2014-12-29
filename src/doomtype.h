@@ -39,10 +39,12 @@
 #include "config.h"
 #endif
 
+#include <stdint.h>
+
 #ifndef __BYTEBOOL__
 #define __BYTEBOOL__
 #include <stdbool.h>
-typedef bool boolean;
+typedef uint32_t boolean;
 typedef unsigned char byte;
 #endif
 
