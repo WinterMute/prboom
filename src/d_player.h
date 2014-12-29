@@ -56,7 +56,7 @@
 #pragma interface
 #endif
 
-
+#include <stdint.h>
 //
 // Player states.
 //
@@ -67,7 +67,9 @@ typedef enum
   // Dead on the ground, view follows killer.
   PST_DEAD,
   // Ready to restart/respawn???
-  PST_REBORN
+  PST_REBORN,
+
+  PST_PAD = UINT32_MAX
 
 } playerstate_t;
 
