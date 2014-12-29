@@ -59,6 +59,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <malloc.h>
 
 #include <3ds.h>
 
@@ -378,50 +379,41 @@ static int has_exited;
  * during the exit process (i.e. after exit() has already been called)
  * Prevent infinitely recursive exits -- killough
  */
+volatile bool prboom_running = true;
 
 void I_SafeExit(int rc)
 {
+  prboom_running = false;
   if (!has_exited)    /* If it hasn't exited yet, exit now -- killough */
     {
       has_exited=rc ? 2 : 1;
-      exit(rc);
+      svcExitThread();
     }
 }
 
-FILE *logFile;
-
 static void I_Quit (void)
+
 {
   if (!has_exited)
     has_exited=1;   /* Prevent infinitely recursive exits -- killough */
 
   if (has_exited == 1) {
+
     I_EndDoom();
+
     if (demorecording)
       G_CheckDemoStatus();
+
     M_SaveDefaults ();
-    prboomGfxExit();
+
+    Z_Close();
+
   }
 }
 
-#include <sys/iosupport.h>
 
-//int main(int argc, const char * const * argv)
-int main(int argc, char **argv)
+void prboom(u32 arg)
 {
-
-  prboomGfxInit();
-  consoleInit(GFX_BOTTOM, NULL);
-  gfxSetScreenFormat(GFX_TOP,GSP_RGBA8_OES);
-  gfxSwapBuffers();
-  gfxFlushBuffers();
-  gspWaitForVBlank();
-  logFile = freopen ("prboom.log", "a+", stdout);
-  devoptab_list[STD_ERR] = devoptab_list[STD_OUT];
-
-  myargc = argc;
-  myargv = (const char * const *) argv;
-
 #ifdef _WIN32
   if (!M_CheckParm("-nodraw")) {
     /* initialize the console window */
@@ -433,8 +425,6 @@ int main(int argc, char **argv)
   lprintf(LO_INFO,"\n");
   PrintVer();
 
-  /* cph - Z_Close must be done after I_Quit, so we register it first. */
-  atexit(Z_Close);
   /*
      killough 1/98:
 
@@ -453,13 +443,44 @@ int main(int argc, char **argv)
 
   Z_Init();                  /* 1/18/98 killough: start up memory stuff first */
 
-  atexit(I_Quit);
-
   I_SetAffinityMask();
 
   /* cphipps - call to video specific startup code */
   I_PreInitGraphics();
 
   D_DoomMain ();
+
+}
+
+//int main(int argc, const char * const * argv)
+int main(int argc, char **argv)
+{
+
+  prboomGfxInit();
+  consoleInit(GFX_BOTTOM, NULL);
+  gfxSetScreenFormat(GFX_TOP,GSP_RGBA8_OES);
+  gfxSwapBuffers();
+  gfxFlushBuffers();
+  gspWaitForVBlank();
+
+  myargc = argc;
+  myargv = (const char * const *) argv;
+
+  u32 *threadStack;
+  Handle threadHandle;
+
+  threadStack = (u32*)memalign(32,8192*4);
+
+  svcCreateThread(&threadHandle, prboom, 0 , &threadStack[8191], 0x3f, 0);
+
+  while(prboom_running) svcSleepThread(100000);
+
+  free(threadStack);
+
+  I_Quit();
+
+  prboomGfxExit();
+
   return 0;
+
 }
