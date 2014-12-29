@@ -388,6 +388,8 @@ void I_SafeExit(int rc)
     }
 }
 
+FILE *logFile;
+
 static void I_Quit (void)
 {
   if (!has_exited)
@@ -398,8 +400,11 @@ static void I_Quit (void)
     if (demorecording)
       G_CheckDemoStatus();
     M_SaveDefaults ();
+    prboomGfxExit();
   }
 }
+
+#include <sys/iosupport.h>
 
 //int main(int argc, const char * const * argv)
 int main(int argc, char **argv)
@@ -411,6 +416,8 @@ int main(int argc, char **argv)
   gfxSwapBuffers();
   gfxFlushBuffers();
   gspWaitForVBlank();
+  logFile = freopen ("prboom.log", "a+", stdout);
+  devoptab_list[STD_ERR] = devoptab_list[STD_OUT];
 
   myargc = argc;
   myargv = (const char * const *) argv;
