@@ -414,10 +414,7 @@ void I_InitGraphics(void)
     I_UpdateVideoMode();
 
     /* Setup the window title */
-    strcpy(titlebuffer,PACKAGE);
-    strcat(titlebuffer," ");
-    strcat(titlebuffer,VERSION);
-//    SDL_WM_SetCaption(titlebuffer, titlebuffer);
+    snprintf(titlebuffer,sizeof(titlebuffer),"%s %s", PACKAGE, VERSION);
 
     /* Initialize the input system */
     I_InitInputs();
