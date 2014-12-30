@@ -411,16 +411,20 @@ static void I_Quit (void)
   }
 }
 
-
-void prboom(u32 arg)
+//int main(int argc, const char * const * argv)
+int main(int argc, char **argv)
 {
-#ifdef _WIN32
-  if (!M_CheckParm("-nodraw")) {
-    /* initialize the console window */
-    Init_ConsoleWin();
-    atexit(Done_ConsoleWin);
-  }
-#endif
+
+  prboomGfxInit();
+  consoleInit(GFX_BOTTOM, NULL);
+  gfxSetScreenFormat(GFX_TOP,GSP_RGBA8_OES);
+  gfxSwapBuffers();
+  gfxFlushBuffers();
+  gspWaitForVBlank();
+
+  myargc = argc;
+  myargv = (const char * const *) argv;
+
   /* Version info */
   lprintf(LO_INFO,"\n");
   PrintVer();
@@ -449,33 +453,6 @@ void prboom(u32 arg)
   I_PreInitGraphics();
 
   D_DoomMain ();
-
-}
-
-//int main(int argc, const char * const * argv)
-int main(int argc, char **argv)
-{
-
-  prboomGfxInit();
-  consoleInit(GFX_BOTTOM, NULL);
-  gfxSetScreenFormat(GFX_TOP,GSP_RGBA8_OES);
-  gfxSwapBuffers();
-  gfxFlushBuffers();
-  gspWaitForVBlank();
-
-  myargc = argc;
-  myargv = (const char * const *) argv;
-
-  u32 *threadStack;
-  Handle threadHandle;
-
-  threadStack = (u32*)memalign(32,8192*4);
-
-  svcCreateThread(&threadHandle, prboom, 0 , &threadStack[8191], 0x3f, 0);
-
-  while(prboom_running) svcSleepThread(100000);
-
-  free(threadStack);
 
   I_Quit();
 
