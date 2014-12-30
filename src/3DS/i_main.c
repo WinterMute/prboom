@@ -387,7 +387,7 @@ void I_SafeExit(int rc)
   if (!has_exited)    /* If it hasn't exited yet, exit now -- killough */
     {
       has_exited=rc ? 2 : 1;
-      svcExitThread();
+      exit(1);
     }
 }
 
@@ -395,7 +395,7 @@ static void I_Quit (void)
 
 {
   if (!has_exited)
-    has_exited=1;   /* Prevent infinitely recursive exits -- killough */
+    has_exited=1;   /* Prevent ifind nfinitely recursive exits -- killough */
 
   if (has_exited == 1) {
 
@@ -406,8 +406,6 @@ static void I_Quit (void)
 
     M_SaveDefaults ();
 
-    Z_Close();
-
   }
 }
 
@@ -416,6 +414,9 @@ int main(int argc, char **argv)
 {
 
   prboomGfxInit();
+
+  atexit(prboomGfxExit);
+
   consoleInit(GFX_BOTTOM, NULL);
   gfxSetScreenFormat(GFX_TOP,GSP_RGBA8_OES);
   gfxSwapBuffers();
@@ -428,6 +429,9 @@ int main(int argc, char **argv)
   /* Version info */
   lprintf(LO_INFO,"\n");
   PrintVer();
+
+  /* cph - Z_Close must be done after I_Quit, so we register it first. */
+  atexit(Z_Close);
 
   /*
      killough 1/98:
@@ -446,6 +450,7 @@ int main(int argc, char **argv)
   */
 
   Z_Init();                  /* 1/18/98 killough: start up memory stuff first */
+  atexit(I_Quit);
 
   I_SetAffinityMask();
 
@@ -453,10 +458,6 @@ int main(int argc, char **argv)
   I_PreInitGraphics();
 
   D_DoomMain ();
-
-  I_Quit();
-
-  prboomGfxExit();
 
   return 0;
 
