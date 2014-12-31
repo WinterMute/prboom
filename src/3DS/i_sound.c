@@ -70,6 +70,12 @@ typedef uint8_t Uint8;
 
 #include "d_main.h"
 
+#include <3ds/types.h>
+#include <3ds/services/csnd.h>
+#include <3ds/linear.h>
+#include <3ds/services/gsp.h>
+#include <3ds/os.h>
+
 // The number of internal mixing channels,
 //  the samples calculated for each mixing step,
 //  the size of the 16bit, 2 hardware channel (stereo)
@@ -84,11 +90,7 @@ int detect_voices = 0; // God knows
 static boolean sound_inited = false;
 static boolean first_sound_init = true;
 
-// Needed for calling the actual sound output.
-static int SAMPLECOUNT=   512;
-#define MAX_CHANNELS    32
-
-// MWM 2000-01-08: Sample rate in samples/second
+#define MAX_CHANNELS    16
 int snd_samplerate=11025;
 
 // The actual output device.
@@ -104,8 +106,8 @@ typedef struct {
   unsigned int stepremainder;
   unsigned int samplerate;
 // The channel data pointers, start and end.
-  const unsigned char* data;
-  const unsigned char* enddata;
+  unsigned char* data;
+  unsigned char* enddata;
 // Time/gametic that the channel started playing,
 //  used to determine oldest, which automatically
 //  has lowest priority.
@@ -130,12 +132,20 @@ int   vol_lookup[128*256];
  * Stops a sound, unlocks the data
  */
 
-static void stopchan(int i)
+static void stopchan(int channel)
 {
-  if (channelinfo[i].data) /* cph - prevent excess unlocks */
+  u8 playing;
+  if (channelinfo[channel].data) /* cph - prevent excess unlocks */
   {
-    channelinfo[i].data=NULL;
-    W_UnlockLumpNum(S_sfx[channelinfo[i].id].lumpnum);
+    CSND_getchannelstate_isplaying(channel, &playing);
+    if (playing)
+    {
+      CSND_setchannel_playbackstate(channel, 0);
+      CSND_sharedmemtype0_cmdupdatestate(1);
+    }
+    linearFree(channelinfo[channel].data);
+    channelinfo[channel].data=NULL;
+    W_UnlockLumpNum(S_sfx[channelinfo[channel].id].lumpnum);
   }
 }
 
@@ -148,13 +158,20 @@ static void stopchan(int i)
 //
 static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
 {
+
   stopchan(channel);
 
-  channelinfo[channel].data = data;
+  channelinfo[channel].data = linearAlloc(len);
+  int i;
+  u8 *src = data  + 8;
+  u8 *dst = channelinfo[channel].data ;
+  //while (samplelen--) dst[samplelen] = src[samplelen] ^ 0x80;
+  for (i=0; i<len; i++) *dst++ = (*src++) ^ 0x80;
+  GSPGPU_FlushDataCache(NULL, channelinfo[channel].data, len);
+
   /* Set pointer to end of raw data. */
   channelinfo[channel].enddata = channelinfo[channel].data + len - 1;
-  channelinfo[channel].samplerate = (channelinfo[channel].data[3]<<8)+channelinfo[channel].data[2];
-  channelinfo[channel].data += 8; /* Skip header */
+  channelinfo[channel].samplerate = (data[3]<<8)+data[2];
 
   channelinfo[channel].stepremainder = 0;
   // Should be gametic, I presume.
@@ -164,11 +181,21 @@ static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
   //  e.g. for avoiding duplicates of chainsaw.
   channelinfo[channel].id = sfxid;
 
+  CSND_playsound(
+    channel, CSND_LOOP_DISABLE, CSND_ENCODING_PCM8,
+    channelinfo[channel].samplerate,
+    channelinfo[channel].data,
+    channelinfo[channel].enddata,
+    len, 2, 0);
+
+  CSND_setchannel_playbackstate(channel, 1);
+  CSND_sharedmemtype0_cmdupdatestate(0);
   return channel;
 }
 
 static void updateSoundParams(int handle, int volume, int seperation, int pitch)
 {
+#if 0
   int slot = handle;
     int   rightvol;
     int   leftvol;
@@ -178,15 +205,15 @@ static void updateSoundParams(int handle, int volume, int seperation, int pitch)
   if ((handle < 0) || (handle >= MAX_CHANNELS))
     I_Error("I_UpdateSoundParams: handle out of range");
 #endif
-  // Set stepping
-  // MWM 2000-12-24: Calculates proportion of channel samplerate
-  // to global samplerate for mixing purposes.
-  // Patched to shift left *then* divide, to minimize roundoff errors
-  // as well as to use SAMPLERATE as defined above, not to assume 11025 Hz
+    // Set stepping
+    // MWM 2000-12-24: Calculates proportion of channel samplerate
+    // to global samplerate for mixing purposes.
+    // Patched to shift left *then* divide, to minimize roundoff errors
+    // as well as to use SAMPLERATE as defined above, not to assume 11025 Hz
     if (pitched_sounds)
-    channelinfo[slot].step = step + (((channelinfo[slot].samplerate<<16)/snd_samplerate)-65536);
+      channelinfo[slot].step = step + (((channelinfo[slot].samplerate<<16)/snd_samplerate)-65536);
     else
-    channelinfo[slot].step = ((channelinfo[slot].samplerate<<16)/snd_samplerate);
+      channelinfo[slot].step = ((channelinfo[slot].samplerate<<16)/snd_samplerate);
 
     // Separation, that is, orientation/stereo.
     //  range is: 1 - 256
@@ -210,13 +237,12 @@ static void updateSoundParams(int handle, int volume, int seperation, int pitch)
     //  for this volume level???
   channelinfo[slot].leftvol_lookup = &vol_lookup[leftvol*256];
   channelinfo[slot].rightvol_lookup = &vol_lookup[rightvol*256];
+#endif // 0
 }
 
 void I_UpdateSoundParams(int handle, int volume, int seperation, int pitch)
 {
-//  SDL_LockAudio();
-  updateSoundParams(handle, volume, seperation, pitch);
-//  SDL_UnlockAudio();
+//  updateSoundParams(handle, volume, seperation, pitch);
 }
 
 //
@@ -258,7 +284,7 @@ void I_SetChannels(void)
     {
       // proff - made this a little bit softer, because with
       // full volume the sound clipped badly
-      vol_lookup[i*256+j] = (i*(j-128)*256)/191;
+      //vol_lookup[i*256+j] = (i*(j-128)*256)/191;
       //vol_lookup[i*256+j] = (i*(j-128)*256)/127;
     }
 }
@@ -317,13 +343,10 @@ int I_StartSound(int id, int channel, int vol, int sep, int pitch, int priority)
   // not in a memory mapped one
   data = W_LockLumpNum(lump);
 
-//  SDL_LockAudio();
 
   // Returns a handle (not used).
   addsfx(id, channel, data, len);
   updateSoundParams(channel, vol, sep, pitch);
-
-//  SDL_UnlockAudio();
 
 
   return channel;
@@ -481,11 +504,9 @@ void I_ShutdownSound(void)
 {
   if (sound_inited) {
     lprintf(LO_INFO, "I_ShutdownSound: ");
-#ifdef HAVE_MIXER
-    Mix_CloseAudio();
-#else
-//    SDL_CloseAudio();
-#endif
+
+    CSND_shutdown();
+
     lprintf(LO_INFO, "\n");
     sound_inited = false;
   }
@@ -495,61 +516,13 @@ void I_ShutdownSound(void)
 
 void I_InitSound(void)
 {
-#ifdef HAVE_MIXER
-  int audio_rate;
-  Uint16 audio_format;
-  int audio_channels;
-  int audio_buffers;
-
-  if (sound_inited)
-      I_ShutdownSound();
-
   // Secure and configure sound device first.
   lprintf(LO_INFO,"I_InitSound: ");
 
-  /* Initialize variables */
-  audio_rate = snd_samplerate;
-#if ( SDL_BYTEORDER == SDL_BIG_ENDIAN )
-  audio_format = AUDIO_S16MSB;
-#else
-//  audio_format = AUDIO_S16LSB;
-#endif
-  audio_channels = 2;
-  SAMPLECOUNT = 512;
-  audio_buffers = SAMPLECOUNT*snd_samplerate/11025;
-
-  if (Mix_OpenAudio(audio_rate, audio_format, audio_channels, audio_buffers) < 0) {
-    lprintf(LO_INFO,"couldn't open audio with desired format\n");
-    return;
+  if (CSND_initialize(NULL)==0) {
+    sound_inited = true;
+    lprintf(LO_INFO," configured 3DS audio device\n");
   }
-  sound_inited = true;
-  SAMPLECOUNT = audio_buffers;
-  Mix_SetPostMix(I_UpdateSound, NULL);
-  lprintf(LO_INFO," configured audio device with %d samples/slice\n", SAMPLECOUNT);
-#else
-//  SDL_AudioSpec audio;
-
-  // Secure and configure sound device first.
-  lprintf(LO_INFO,"I_InitSound: ");
-
-  // Open the audio device
-//  audio.freq = snd_samplerate;
-//#if ( SDL_BYTEORDER == SDL_BIG_ENDIAN )
-//  audio.format = AUDIO_S16MSB;
-//#else
-//  audio.format = AUDIO_S16LSB;
-//#endif
-//  audio.channels = 2;
-//  audio.samples = SAMPLECOUNT*snd_samplerate/11025;
-//  audio.callback = I_UpdateSound;
-//  if ( SDL_OpenAudio(&audio, NULL) < 0 ) {
-//    lprintf(LO_INFO,"couldn't open audio with desired format\n");
-//    return;
-//  }
-//  SAMPLECOUNT = audio.samples;
-  lprintf(LO_INFO," configured audio device with %d samples/slice\n", SAMPLECOUNT);
-#endif
-
   if (first_sound_init) {
     atexit(I_ShutdownSound);
     first_sound_init = false;
@@ -560,9 +533,6 @@ void I_InitSound(void)
 
   // Finished initialization.
   lprintf(LO_INFO,"I_InitSound: sound module ready\n");
-#ifndef HAVE_MIXER
-//  SDL_PauseAudio(0);
-#endif
 }
 
 
