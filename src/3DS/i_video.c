@@ -125,7 +125,7 @@ struct eventTranslate menuKeyTable[] = {
   { KEY_START  , KEYD_ESCAPE     },
   { KEY_SELECT , KEYD_ENTER      },
   { KEY_A      , KEYD_ENTER      },
-  { KEY_B      , KEYD_ESCAPE     },
+  { KEY_B      , KEYD_BACKSPACE  },
   { KEY_L      , ','             },
   { KEY_R      , '.'             },
   { KEY_X      , KEYD_RSHIFT     },
