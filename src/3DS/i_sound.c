@@ -137,13 +137,12 @@ static void stopchan(int channel)
   u8 playing;
   if (channelinfo[channel].data) /* cph - prevent excess unlocks */
   {
-    CSND_getchannelstate_isplaying(channel, &playing);
+    CSND_getchannelstate_isplaying(channel + 8, &playing);
     if (playing)
     {
       CSND_setchannel_playbackstate(channel, 0);
       CSND_sharedmemtype0_cmdupdatestate(1);
     }
-    linearFree(channelinfo[channel].data);
     channelinfo[channel].data=NULL;
     W_UnlockLumpNum(S_sfx[channelinfo[channel].id].lumpnum);
   }
@@ -165,7 +164,6 @@ static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
   int i;
   u8 *src = data  + 8;
   u8 *dst = channelinfo[channel].data ;
-  //while (samplelen--) dst[samplelen] = src[samplelen] ^ 0x80;
   for (i=0; i<len; i++) *dst++ = (*src++) ^ 0x80;
   GSPGPU_FlushDataCache(NULL, channelinfo[channel].data, len);
 
@@ -182,14 +180,12 @@ static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
   channelinfo[channel].id = sfxid;
 
   CSND_playsound(
-    channel, CSND_LOOP_DISABLE, CSND_ENCODING_PCM8,
+    channel + 8, CSND_LOOP_DISABLE, CSND_ENCODING_PCM8,
     channelinfo[channel].samplerate,
     channelinfo[channel].data,
-    channelinfo[channel].enddata,
+    channelinfo[channel].data,
     len, 2, 0);
 
-  CSND_setchannel_playbackstate(channel, 1);
-  CSND_sharedmemtype0_cmdupdatestate(0);
   return channel;
 }
 
@@ -260,9 +256,6 @@ void I_SetChannels(void)
   // This function sets up internal lookups used during
   //  the mixing process.
   int   i;
-  int   j;
-
-  int*  steptablemid = steptable + 128;
 
   // Okay, reset internal mixing channels to zero.
   for (i=0; i<MAX_CHANNELS; i++)
@@ -270,23 +263,6 @@ void I_SetChannels(void)
     memset(&channelinfo[i],0,sizeof(channel_info_t));
   }
 
-  // This table provides step widths for pitch parameters.
-  // I fail to see that this is currently used.
-  for (i=-128 ; i<128 ; i++)
-    steptablemid[i] = (int)(pow(1.2, ((double)i/(64.0*snd_samplerate/11025)))*65536.0);
-
-
-  // Generates volume lookup tables
-  //  which also turn the unsigned samples
-  //  into signed samples.
-  for (i=0 ; i<128 ; i++)
-    for (j=0 ; j<256 ; j++)
-    {
-      // proff - made this a little bit softer, because with
-      // full volume the sound clipped badly
-      //vol_lookup[i*256+j] = (i*(j-128)*256)/191;
-      //vol_lookup[i*256+j] = (i*(j-128)*256)/127;
-    }
 }
 
 //
