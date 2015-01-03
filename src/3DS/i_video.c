@@ -290,18 +290,19 @@ void I_FinishUpdate (void)
   u32* bufAdr=(u32*)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
   int w, h;
 
-  for (w=0; w<width; w++)
+  for (h=0; h<height; h++)
   {
-    u32 *dest=&bufAdr[240*w + 239];
-    u8 *src=screens[0].data + w;
-
-    for (h=0; h<height; h++)
+    u32 *dest=&bufAdr[239-h];
+    u8 *src=screens[0].data + (h * screens[0].byte_pitch);
+    __builtin_prefetch(src);
+    for (w=0; w<width; w++)
     {
-        *(dest--)=palettes[(*src) + currentPalette];
-        src += screens[0].byte_pitch;
+        *(dest)=palettes[(*src++) + currentPalette];
+        dest += 240;
     }
 
   }
+
   gfxSwapBuffers();
   gfxFlushBuffers();
   gspWaitForVBlank();
