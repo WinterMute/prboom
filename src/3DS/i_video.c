@@ -107,7 +107,6 @@ struct eventTranslate gameKeyTable[] = {
   { KEY_LEFT   , KEYD_LEFTARROW  },
   { KEY_RIGHT  , KEYD_RIGHTARROW },
   { KEY_START  , KEYD_ESCAPE     },
-  { KEY_SELECT , KEYD_ENTER      },
   { KEY_A      , KEYD_RCTRL      },
   { KEY_B      , KEYD_SPACEBAR   },
   { KEY_L      , ','             },
@@ -126,9 +125,6 @@ struct eventTranslate menuKeyTable[] = {
   { KEY_SELECT , KEYD_ENTER      },
   { KEY_A      , KEYD_ENTER      },
   { KEY_B      , KEYD_BACKSPACE  },
-  { KEY_L      , ','             },
-  { KEY_R      , '.'             },
-  { KEY_X      , KEYD_RSHIFT     },
   { KEY_Y      , 'y'             }
 };
 
@@ -151,6 +147,9 @@ void translateKeys(evtype_t type, u32 mask, struct eventTranslate *table, int co
   }
 }
 
+char weapons[9] = { '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+int last_weapon_key = 0;
+
 void I_StartTic (void)
 {
   u32 kDown, kUp;
@@ -158,24 +157,47 @@ void I_StartTic (void)
   struct eventTranslate *translateTable = gameKeyTable;
   int numTranslations = numGameKeys;
 
+  hidScanInput();
+
+  kDown = hidKeysDown();
+  kUp   = hidKeysUp();
+
   if (menuactive)
   {
     translateTable = menuKeyTable;
     numTranslations = numMenuKeys;
+  } else {
+
+    event_t event;
+
+    if (last_weapon_key != 0 && players[displayplayer].pendingweapon != wp_nochange) {
+        event.type = ev_keyup;
+        event.data1 = last_weapon_key;
+        D_PostEvent(&event);
+        last_weapon_key = 0;
+    }
+
+
+    if(kDown & KEY_Y) {
+
+        weapontype_t weapon_index = players[displayplayer].readyweapon;
+
+        weapon_index++;
+        while(players[displayplayer].weaponowned[weapon_index] == false) {
+            weapon_index++;
+            if (weapon_index >= NUMWEAPONS) weapon_index = 0;
+        }
+
+        last_weapon_key = weapons[weapon_index];
+        event.type = ev_keydown;
+        event.data1 = last_weapon_key;
+        D_PostEvent(&event);
+    }
   }
-
-  hidScanInput();
-
-  kDown = hidKeysDown();
 
   translateKeys(ev_keydown, kDown, translateTable, numTranslations);
 
-  kUp   = hidKeysUp();
-
   translateKeys(ev_keyup, kUp, gameKeyTable, numGameKeys);
-
-
-
 
 }
 
