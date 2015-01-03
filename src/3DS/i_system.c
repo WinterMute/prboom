@@ -103,12 +103,16 @@ static u64 start_displaytime;
 static u64 displaytime;
 static boolean InDisplay = false;
 
+static u64 start_displaytic;
+u64 displaytics;
+
 boolean I_StartDisplay(void)
 {
   if (InDisplay)
     return false;
 
   start_displaytime = osGetTime();
+  start_displaytic = svcGetSystemTick();
   InDisplay = true;
   return true;
 }
@@ -116,6 +120,7 @@ boolean I_StartDisplay(void)
 void I_EndDisplay(void)
 {
   displaytime = osGetTime() - start_displaytime;
+  displaytics = svcGetSystemTick() - start_displaytic;
   InDisplay = false;
 }
 

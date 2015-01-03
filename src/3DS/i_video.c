@@ -272,8 +272,11 @@ void I_UpdateNoBlit (void)
 static int newpal = 0;
 #define NO_PALETTE_CHANGE 1000
 
+extern u64 displaytics;
+
 void I_FinishUpdate (void)
 {
+  static lasttic = 0;
   /* Update the display buffer (flipping video pages if supported)
    * If we need to change palette, that implicitely does a flip */
   if (newpal != NO_PALETTE_CHANGE) {
@@ -302,6 +305,9 @@ void I_FinishUpdate (void)
   gfxSwapBuffers();
   gfxFlushBuffers();
   gspWaitForVBlank();
+  u64 now = svcGetSystemTick();
+  u64 frametics = now - lasttic;
+  lasttic = now;
 
 }
 
