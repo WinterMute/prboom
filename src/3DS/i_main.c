@@ -409,6 +409,9 @@ static void I_Quit (void)
   }
 }
 
+bool I_CallBack() {
+    return aptMainLoop();
+}
 //int main(int argc, const char * const * argv)
 int main(int argc, char **argv)
 {

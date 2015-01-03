@@ -38,6 +38,7 @@
 
 void I_Init(void);
 void I_SafeExit(int rc);
+bool I_CallBack();
 
 extern int (*I_GetTime)(void);
 
