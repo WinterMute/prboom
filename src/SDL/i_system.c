@@ -72,6 +72,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <stdbool.h>
+
 
 #ifndef PRBOOM_SERVER
 #include "m_argv.h"
@@ -98,6 +100,10 @@
 static unsigned int start_displaytime;
 static unsigned int displaytime;
 static boolean InDisplay = false;
+
+bool I_CallBack(void) {
+  return true;
+}
 
 boolean I_StartDisplay(void)
 {
