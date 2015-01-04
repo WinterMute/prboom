@@ -63,8 +63,6 @@
 
 #include <3ds.h>
 
-#include "prboomGfx.h"
-
 /* Most of the following has been rewritten by Lee Killough
  *
  * I_GetTime
@@ -416,9 +414,9 @@ bool I_CallBack() {
 int main(int argc, char **argv)
 {
 
-  prboomGfxInit();
+  gfxInit(GSP_RGBA8_OES,GSP_RGB565_OES,false);
 
-  atexit(prboomGfxExit);
+  atexit(gfxExit);
 
   consoleInit(GFX_BOTTOM, NULL);
   gfxSetScreenFormat(GFX_TOP,GSP_RGBA8_OES);
