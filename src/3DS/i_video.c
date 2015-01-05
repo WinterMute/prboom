@@ -49,6 +49,7 @@ typedef  uint8_t Uint8;
 #include <3ds/types.h>
 #include <3ds/gfx.h>
 #include <3ds/services/hid.h>
+#include <3ds/svc.h>
 
 #include "m_argv.h"
 #include "doomstat.h"
@@ -107,6 +108,7 @@ struct eventTranslate gameKeyTable[] = {
   { KEY_LEFT   , KEYD_LEFTARROW  },
   { KEY_RIGHT  , KEYD_RIGHTARROW },
   { KEY_START  , KEYD_ESCAPE     },
+  { KEY_SELECT , KEYD_TAB        },
   { KEY_A      , KEYD_RCTRL      },
   { KEY_B      , KEYD_SPACEBAR   },
   { KEY_L      , ','             },
@@ -129,6 +131,19 @@ struct eventTranslate menuKeyTable[] = {
 };
 
 int numMenuKeys = sizeof(menuKeyTable) / sizeof(menuKeyTable[0]);
+
+struct eventTranslate mapKeyTable[] = {
+  { KEY_UP     , KEYD_UPARROW    },
+  { KEY_DOWN   , KEYD_DOWNARROW  },
+  { KEY_LEFT   , KEYD_LEFTARROW  },
+  { KEY_RIGHT  , KEYD_RIGHTARROW },
+  { KEY_SELECT , KEYD_TAB        },
+  { KEY_START  , KEYD_ESCAPE     },
+  { KEY_L      , '-'             },
+  { KEY_R      , '='             }
+};
+
+int numMapKeys = sizeof(mapKeyTable) / sizeof(mapKeyTable[0]);
 
 void translateKeys(evtype_t type, u32 mask, struct eventTranslate *table, int count)
 {
@@ -166,6 +181,9 @@ void I_StartTic (void)
   {
     translateTable = menuKeyTable;
     numTranslations = numMenuKeys;
+  } else if (automapmode & am_active) {
+    translateTable = mapKeyTable;
+    numTranslations = numMapKeys;
   } else {
 
     event_t event;
@@ -197,7 +215,7 @@ void I_StartTic (void)
 
   translateKeys(ev_keydown, kDown, translateTable, numTranslations);
 
-  translateKeys(ev_keyup, kUp, gameKeyTable, numGameKeys);
+  translateKeys(ev_keyup, kUp, translateTable, numTranslations);
 
 }
 
@@ -298,16 +316,17 @@ extern u64 displaytics;
 
 void I_FinishUpdate (void)
 {
-  static lasttic = 0;
+  static u64 lasttic = 0;
+  int height, width;
   /* Update the display buffer (flipping video pages if supported)
    * If we need to change palette, that implicitely does a flip */
   if (newpal != NO_PALETTE_CHANGE) {
     I_UploadNewPalette(newpal);
     newpal = NO_PALETTE_CHANGE;
   }
-  //dest=screen->pixels;
-  int height=screens[0].height;
-  int width=screens[0].width;
+
+  height=screens[0].height;
+  width=screens[0].width;
 
   u32* bufAdr=(u32*)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
   int w, h;
@@ -475,11 +494,11 @@ void I_UpdateVideoMode(void)
   I_SetRes();
 
   screens[0].not_on_heap = false;
-  screens[0].width = 400;
-  screens[0].height = 240;
-  screens[0].byte_pitch = 400;
-  screens[0].short_pitch = 200;
-  screens[0].int_pitch = 100;
+  screens[0].width = SCREENWIDTH;
+  screens[0].height = SCREENHEIGHT;
+  screens[0].byte_pitch = SCREENPITCH;
+  screens[0].short_pitch = screens[0].byte_pitch/2;
+  screens[0].int_pitch = screens[0].short_pitch/2;
 
   V_AllocScreens();
   R_InitBuffer(SCREENWIDTH, SCREENHEIGHT);
