@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([prboom],[2.5.0])
+AC_INIT([prboom],[2.5.1])
 AC_CONFIG_HEADER(config.h)
 AC_CONFIG_AUX_DIR(autotools)
 AC_CONFIG_MACRO_DIR(autotools)
@@ -106,13 +106,16 @@ AC_CHECK_LIB(m,pow)
 
 dnl - system specific stuff
 
+dnl - GL
+AC_ARG_ENABLE(gl,AC_HELP_STRING([--disable-gl],[disable OpenGL rendering code]),,enable_gl="yes")
+
+AC_ARG_ENABLE(sdl,AC_HELP_STRING([--disable-sdl],[Do not use SDL even if available]),, [enable_sdl="yes"])
+
+dnl - platform, for use with game console ports
 AC_ARG_WITH([platform],
   AC_HELP_STRING([--with-platform],[build for specific platform]),
   [], [with_platform=default])
 
-AC_ARG_WITH([sdl],
-  AC_HELP_STRING([--without-sdl],[Do not use SDL even if available]),
-  [], [with_sdl=yes])
 
 case "$host" in
     *-*-cygwin* | *-*-mingw32*)
@@ -127,15 +130,15 @@ case "$host" in
         fi
         ;;
     arm-*-eabi*)
+        enable_sdl=no
+        enable_gl=no
         if test x$with_platform = x3ds; then
             CFLAGS="$CFLAGS -march=armv6k -mtune=mpcore -mfloat-abi=hard -mword-relocations"
             LDFLAGS="$LDFLAGS -march=armv6k -mtune=mpcore -mfloat-abi=hard -specs=3dsx.specs -Wl,-Map,prboom.map"
-            with_sdl=no
         fi
         if test x$with_platform = xnds; then
             CFLAGS="$CFLAGS -marm -mthumb-interwork -march=armv5te -mtune=arm946e-s"
             LDFLAGS="$LDFLAGS -marm -mthumb-interwork -march=armv5te -mtune=arm946e-s -specs=ds_arm9.specs -Wl,-Map,prboom.map"
-            with_sdl=no
         fi
         ;;
     *)
@@ -143,8 +146,9 @@ case "$host" in
 	;;
 esac
 
-dnl - GL
-AC_ARG_ENABLE(gl,AC_HELP_STRING([--disable-gl],[disable OpenGL rendering code]),,enable_gl="yes")
+dnl check GL libraries
+AM_CONDITIONAL(BUILD_GL,test "$enable_gl" = "yes")
+
 if test "$enable_gl" = "yes"
 then
     AC_MSG_CHECKING(for OpenGL support)
@@ -165,8 +169,6 @@ then
         AC_MSG_ERROR([You must have the relevant OpenGL development libraries & headers installed to compile with OpenGL support])
     fi
 fi
-AM_CONDITIONAL(BUILD_GL,test "$enable_gl" = "yes")
-
 
 dnl check sdl libraries
 CheckSDL()
@@ -223,7 +225,7 @@ CheckSDL()
     ])
 }
 
-AS_IF([test "x$with_sdl" = xno],
+AS_IF([test "x$enable_sdl" = xno],
   [
     dnl -- sdl was disabled by the user
   ],[
