@@ -68,6 +68,9 @@ typedef  uint8_t Uint8;
 #include "st_stuff.h"
 #include "lprintf.h"
 #include "i_pngshot.h"
+#include "g_game.h"
+
+#include "keyboard.h"
 
 int gl_colorbuffer_bits=16;
 int gl_depthbuffer_bits=16;
@@ -165,14 +168,13 @@ void translateKeys(evtype_t type, u32 mask, struct eventTranslate *table, int co
 char weapons[9] = { '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 int last_weapon_key = 0;
 
-void I_StartTic (void)
-{
+
+void gameControls() {
+
   u32 kDown, kUp;
 
   struct eventTranslate *translateTable = gameKeyTable;
   int numTranslations = numGameKeys;
-
-  hidScanInput();
 
   kDown = hidKeysDown();
   kUp   = hidKeysUp();
@@ -216,6 +218,37 @@ void I_StartTic (void)
   translateKeys(ev_keydown, kDown, translateTable, numTranslations);
 
   translateKeys(ev_keyup, kUp, translateTable, numTranslations);
+
+
+}
+bool saveStringCopied = false;
+extern int saveStringEnter;
+
+void I_StartTic (void)
+{
+  int key;
+  event_t event;
+
+  hidScanInput();
+
+  if (saveStringEnter) {
+    if (!saveStringCopied) {
+      strcpy(keyboard_string,saveOldString);
+      saveStringCopied = true;
+      if (strcmp(keyboard_string,"empty slot") == 0) keyboard_string[0] = 0;
+    }
+
+    key = updateKeyboard();
+
+    if (key == KEYD_ESCAPE || key == KEYD_ENTER) saveStringCopied = false;
+
+    event.type = ev_keydown;
+    event.data1 = key;
+    D_PostEvent(&event);
+
+  } else {
+    gameControls();
+  }
 
 }
 
@@ -317,7 +350,12 @@ extern u64 displaytics;
 void I_FinishUpdate (void)
 {
   static u64 lasttic = 0;
+  u64 now, frametics;
+
   int height, width;
+  u32 *bufAdr;
+  int w, h;
+
   /* Update the display buffer (flipping video pages if supported)
    * If we need to change palette, that implicitely does a flip */
   if (newpal != NO_PALETTE_CHANGE) {
@@ -328,8 +366,8 @@ void I_FinishUpdate (void)
   height=screens[0].height;
   width=screens[0].width;
 
-  u32* bufAdr=(u32*)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-  int w, h;
+  bufAdr=(u32*)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+
 
   for (h=0; h<height; h++)
   {
@@ -347,8 +385,8 @@ void I_FinishUpdate (void)
   gfxSwapBuffers();
   gfxFlushBuffers();
   gspWaitForVBlank();
-  u64 now = svcGetSystemTick();
-  u64 frametics = now - lasttic;
+  now = svcGetSystemTick();
+  frametics = now - lasttic;
   lasttic = now;
 
 }
