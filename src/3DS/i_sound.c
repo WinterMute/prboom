@@ -45,15 +45,6 @@
 
 #include <stdint.h>
 typedef uint8_t Uint8;
-/*#include "SDL.h"
-#include "SDL_audio.h"
-#include "SDL_mutex.h"
-#include "SDL_byteorder.h"
-#include "SDL_version.h"
-#ifdef HAVE_MIXER
-#include "SDL_mixer.h"
-#endif
-*/
 #include "z_zone.h"
 
 #include "m_swap.h"
@@ -157,13 +148,14 @@ static void stopchan(int channel)
 //
 static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
 {
+  int i;
+  u8 *src, *dst;
 
   stopchan(channel);
 
   channelinfo[channel].data = linearAlloc(len);
-  int i;
-  u8 *src = data  + 8;
-  u8 *dst = channelinfo[channel].data ;
+  src = data  + 8;
+  dst = channelinfo[channel].data ;
   for (i=0; i<len; i++) *dst++ = (*src++) ^ 0x80;
   GSPGPU_FlushDataCache(NULL, channelinfo[channel].data, len);
 
@@ -239,7 +231,7 @@ static void updateSoundParams(int handle, int volume, int seperation, int pitch)
 
 void I_UpdateSoundParams(int handle, int volume, int seperation, int pitch)
 {
-//  updateSoundParams(handle, volume, seperation, pitch);
+  updateSoundParams(handle, volume, seperation, pitch);
 }
 
 //
