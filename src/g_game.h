@@ -185,4 +185,9 @@ extern char savedescription[SAVEDESCLEN];  // Description to save in savegame
 /* cph - compatibility level strings */
 extern const char * comp_lev_str[];
 
+#define SAVEGAMESIZE  0x20000
+#define SAVESTRINGSIZE  24
+
+extern char saveOldString[SAVESTRINGSIZE];
+
 #endif
