@@ -890,6 +890,7 @@ void M_SaveDefaults (void)
     }
 
   fclose (f);
+  free(buffer);
 }
 
 /*
