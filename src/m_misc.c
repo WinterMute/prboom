@@ -846,15 +846,21 @@ static char *defaultfile;
 //
 // M_SaveDefaults
 //
+#define CONFIG_BUFFER_SIZE 16384
 
 void M_SaveDefaults (void)
 {
   int   i;
   FILE* f;
+  char *buffer;
 
   f = fopen (defaultfile, "w");
   if (!f)
     return; // can't write the file, but don't complain
+
+  //djm
+  buffer = malloc(CONFIG_BUFFER_SIZE);
+  setvbuf(f,buffer,_IOFBF,CONFIG_BUFFER_SIZE);
 
   // 3/3/98 explain format of file
 
@@ -918,6 +924,7 @@ void M_LoadDefaults (void)
   char* newstring = NULL;   // killough
   int   parm;
   boolean isstring;
+  char *buffer;
 
   // set everything to base values
 
@@ -936,7 +943,6 @@ void M_LoadDefaults (void)
 #else
 #define BOOM_CFG "prboom.cfg"
 #endif
-
   i = M_CheckParm ("-config");
   if (i && i < myargc-1)
     defaultfile = strdup(myargv[i+1]);
@@ -953,6 +959,9 @@ void M_LoadDefaults (void)
   // read the file in, overriding any set defaults
 
   f = fopen (defaultfile, "r");
+  buffer = malloc(CONFIG_BUFFER_SIZE);
+  setvbuf(f,buffer,_IOFBF,CONFIG_BUFFER_SIZE);
+
   if (f)
     {
     while (!feof(f))
@@ -1013,6 +1022,7 @@ void M_LoadDefaults (void)
       }
 
     fclose (f);
+    free(buffer);
     }
   //jff 3/4/98 redundant range checks for hud deleted here
 }
