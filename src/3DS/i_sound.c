@@ -93,8 +93,6 @@ static boolean first_sound_init = true;
 #define MAX_CHANNELS    16
 int snd_samplerate=11025;
 
-// The actual output device.
-int audio_fd;
 
 typedef struct {
   // SFX id of the playing sound effect.
@@ -137,11 +135,13 @@ static void stopchan(int channel)
   u8 playing;
   if (channelinfo[channel].data) /* cph - prevent excess unlocks */
   {
-    CSND_getchannelstate_isplaying(channel + 8, &playing);
-    if (playing)
-    {
-      CSND_setchannel_playbackstate(channel, 0);
-      CSND_sharedmemtype0_cmdupdatestate(1);
+    if (sound_inited) {
+      CSND_getchannelstate_isplaying(channel + 8, &playing);
+      if (playing)
+      {
+        CSND_setchannel_playbackstate(channel, 0);
+        CSND_sharedmemtype0_cmdupdatestate(1);
+      }
     }
     channelinfo[channel].data=NULL;
     W_UnlockLumpNum(S_sfx[channelinfo[channel].id].lumpnum);
@@ -179,13 +179,14 @@ static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
   //  e.g. for avoiding duplicates of chainsaw.
   channelinfo[channel].id = sfxid;
 
-  CSND_playsound(
-    channel + 8, CSND_LOOP_DISABLE, CSND_ENCODING_PCM8,
-    channelinfo[channel].samplerate,
-    channelinfo[channel].data,
-    channelinfo[channel].data,
-    len, 2, 0);
-
+  if (sound_inited) {
+    CSND_playsound(
+      channel + 8, CSND_LOOP_DISABLE, CSND_ENCODING_PCM8,
+      channelinfo[channel].samplerate,
+      channelinfo[channel].data,
+      channelinfo[channel].data,
+      len, 2, 0);
+  }
   return channel;
 }
 
@@ -336,9 +337,7 @@ void I_StopSound (int handle)
   if ((handle < 0) || (handle >= MAX_CHANNELS))
     I_Error("I_StopSound: handle out of range");
 #endif
-//  SDL_LockAudio();
   stopchan(handle);
-//  SDL_UnlockAudio();
 }
 
 
@@ -498,17 +497,17 @@ void I_InitSound(void)
   if (CSND_initialize(NULL)==0) {
     sound_inited = true;
     lprintf(LO_INFO," configured 3DS audio device\n");
-  }
-  if (first_sound_init) {
-    atexit(I_ShutdownSound);
-    first_sound_init = false;
-  }
+    if (first_sound_init) {
+      atexit(I_ShutdownSound);
+      first_sound_init = false;
+    }
 
-  if (!nomusicparm)
-    I_InitMusic();
+    if (!nomusicparm)
+      I_InitMusic();
 
-  // Finished initialization.
-  lprintf(LO_INFO,"I_InitSound: sound module ready\n");
+    // Finished initialization.
+    lprintf(LO_INFO,"I_InitSound: sound module ready\n");
+  }
 }
 
 
