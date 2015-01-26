@@ -27,7 +27,7 @@
  *  02111-1307, USA.
  *
  * DESCRIPTION:
- *  DOOM graphics stuff for SDL
+ *  DOOM graphics stuff for NDS
  *
  *-----------------------------------------------------------------------------
  */
@@ -46,7 +46,7 @@
 
 typedef  uint8_t Uint8;
 
-//#include "SDL.h"
+#include <nds.h>
 
 #include "m_argv.h"
 #include "doomstat.h"
@@ -88,182 +88,138 @@ extern int     usemouse;        // config file var
 static boolean mouse_enabled; // usemouse, but can be overriden by -nomouse
 static boolean mouse_currently_grabbed;
 
-/////////////////////////////////////////////////////////////////////////////////
-// Keyboard handling
 
-//
-//  Translates the key currently in key
-//
 
-typedef int SDL_keysym;
 
-static int I_TranslateKey(SDL_keysym* key)
+struct eventTranslate {
+  u32 buttonMask;
+  u32 doomKey;
+};
+
+struct eventTranslate gameKeyTable[] = {
+  { KEY_UP     , KEYD_UPARROW    },
+  { KEY_DOWN   , KEYD_DOWNARROW  },
+  { KEY_LEFT   , KEYD_LEFTARROW  },
+  { KEY_RIGHT  , KEYD_RIGHTARROW },
+  { KEY_START  , KEYD_ESCAPE     },
+  { KEY_SELECT , KEYD_TAB        },
+  { KEY_A      , KEYD_RCTRL      },
+  { KEY_B      , KEYD_SPACEBAR   },
+  { KEY_L      , ','             },
+  { KEY_R      , '.'             },
+  { KEY_X      , KEYD_RSHIFT     }
+};
+
+int numGameKeys = sizeof(gameKeyTable) / sizeof(gameKeyTable[0]);
+
+struct eventTranslate menuKeyTable[] = {
+  { KEY_UP     , KEYD_UPARROW    },
+  { KEY_DOWN   , KEYD_DOWNARROW  },
+  { KEY_LEFT   , KEYD_LEFTARROW  },
+  { KEY_RIGHT  , KEYD_RIGHTARROW },
+  { KEY_START  , KEYD_ESCAPE     },
+  { KEY_SELECT , KEYD_ENTER      },
+  { KEY_A      , KEYD_ENTER      },
+  { KEY_B      , KEYD_BACKSPACE  },
+  { KEY_Y      , 'y'             }
+};
+
+int numMenuKeys = sizeof(menuKeyTable) / sizeof(menuKeyTable[0]);
+
+struct eventTranslate mapKeyTable[] = {
+  { KEY_UP     , KEYD_UPARROW    },
+  { KEY_DOWN   , KEYD_DOWNARROW  },
+  { KEY_LEFT   , KEYD_LEFTARROW  },
+  { KEY_RIGHT  , KEYD_RIGHTARROW },
+  { KEY_SELECT , KEYD_TAB        },
+  { KEY_START  , KEYD_ESCAPE     },
+  { KEY_L      , '-'             },
+  { KEY_R      , '='             }
+};
+
+int numMapKeys = sizeof(mapKeyTable) / sizeof(mapKeyTable[0]);
+
+void translateKeys(evtype_t type, u32 mask, struct eventTranslate *table, int count)
 {
-  int rc = 0;
+  int i;
 
-/*  switch (key->sym) {
-  case SDLK_LEFT: rc = KEYD_LEFTARROW;  break;
-  case SDLK_RIGHT:  rc = KEYD_RIGHTARROW; break;
-  case SDLK_DOWN: rc = KEYD_DOWNARROW;  break;
-  case SDLK_UP:   rc = KEYD_UPARROW;  break;
-  case SDLK_ESCAPE: rc = KEYD_ESCAPE; break;
-  case SDLK_RETURN: rc = KEYD_ENTER;  break;
-  case SDLK_TAB:  rc = KEYD_TAB;    break;
-  case SDLK_F1:   rc = KEYD_F1;   break;
-  case SDLK_F2:   rc = KEYD_F2;   break;
-  case SDLK_F3:   rc = KEYD_F3;   break;
-  case SDLK_F4:   rc = KEYD_F4;   break;
-  case SDLK_F5:   rc = KEYD_F5;   break;
-  case SDLK_F6:   rc = KEYD_F6;   break;
-  case SDLK_F7:   rc = KEYD_F7;   break;
-  case SDLK_F8:   rc = KEYD_F8;   break;
-  case SDLK_F9:   rc = KEYD_F9;   break;
-  case SDLK_F10:  rc = KEYD_F10;    break;
-  case SDLK_F11:  rc = KEYD_F11;    break;
-  case SDLK_F12:  rc = KEYD_F12;    break;
-  case SDLK_BACKSPACE:  rc = KEYD_BACKSPACE;  break;
-  case SDLK_DELETE: rc = KEYD_DEL;  break;
-  case SDLK_INSERT: rc = KEYD_INSERT; break;
-  case SDLK_PAGEUP: rc = KEYD_PAGEUP; break;
-  case SDLK_PAGEDOWN: rc = KEYD_PAGEDOWN; break;
-  case SDLK_HOME: rc = KEYD_HOME; break;
-  case SDLK_END:  rc = KEYD_END;  break;
-  case SDLK_PAUSE:  rc = KEYD_PAUSE;  break;
-  case SDLK_EQUALS: rc = KEYD_EQUALS; break;
-  case SDLK_MINUS:  rc = KEYD_MINUS;  break;
-  case SDLK_KP0:  rc = KEYD_KEYPAD0;  break;
-  case SDLK_KP1:  rc = KEYD_KEYPAD1;  break;
-  case SDLK_KP2:  rc = KEYD_KEYPAD2;  break;
-  case SDLK_KP3:  rc = KEYD_KEYPAD3;  break;
-  case SDLK_KP4:  rc = KEYD_KEYPAD4;  break;
-  case SDLK_KP5:  rc = KEYD_KEYPAD5;  break;
-  case SDLK_KP6:  rc = KEYD_KEYPAD6;  break;
-  case SDLK_KP7:  rc = KEYD_KEYPAD7;  break;
-  case SDLK_KP8:  rc = KEYD_KEYPAD8;  break;
-  case SDLK_KP9:  rc = KEYD_KEYPAD9;  break;
-  case SDLK_KP_PLUS:  rc = KEYD_KEYPADPLUS; break;
-  case SDLK_KP_MINUS: rc = KEYD_KEYPADMINUS;  break;
-  case SDLK_KP_DIVIDE:  rc = KEYD_KEYPADDIVIDE; break;
-  case SDLK_KP_MULTIPLY: rc = KEYD_KEYPADMULTIPLY; break;
-  case SDLK_KP_ENTER: rc = KEYD_KEYPADENTER;  break;
-  case SDLK_KP_PERIOD:  rc = KEYD_KEYPADPERIOD; break;
-  case SDLK_LSHIFT:
-  case SDLK_RSHIFT: rc = KEYD_RSHIFT; break;
-  case SDLK_LCTRL:
-  case SDLK_RCTRL:  rc = KEYD_RCTRL;  break;
-  case SDLK_LALT:
-  case SDLK_LMETA:
-  case SDLK_RALT:
-  case SDLK_RMETA:  rc = KEYD_RALT;   break;
-  case SDLK_CAPSLOCK: rc = KEYD_CAPSLOCK; break;
-  default:    rc = key->sym;    break;
+  event_t event;
+  event.type = type;
+
+  for( i=0; i<count; i++)
+  {
+    if(mask & table[i].buttonMask)
+    {
+      event.data1 = table[i].doomKey;
+      D_PostEvent(&event);
+    }
   }
-*/
-  return rc;
-
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-// Main input code
+char weapons[9] = { '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+int last_weapon_key = 0;
 
-/* cph - pulled out common button code logic */
-static int I_SDLtoDoomMouseState(Uint8 buttonstate)
-{
-  return 0;
-/*      | (buttonstate & SDL_BUTTON(1) ? 1 : 0)
-      | (buttonstate & SDL_BUTTON(2) ? 2 : 0)
-      | (buttonstate & SDL_BUTTON(3) ? 4 : 0);
-*/}
 
-typedef int SDL_Event;
+void gameControls() {
 
-static void I_GetEvent(SDL_Event *Event)
-{
-  event_t event;
+  u32 kDown, kUp;
 
-/*  switch (Event->type) {
-  case SDL_KEYDOWN:
-    event.type = ev_keydown;
-    event.data1 = I_TranslateKey(&Event->key.keysym);
-    D_PostEvent(&event);
-    break;
+  struct eventTranslate *translateTable = gameKeyTable;
+  int numTranslations = numGameKeys;
 
-  case SDL_KEYUP:
+  kDown = keysDown();
+  kUp   = keysUp();
+
+  if (menuactive)
   {
-    event.type = ev_keyup;
-    event.data1 = I_TranslateKey(&Event->key.keysym);
-    D_PostEvent(&event);
+    translateTable = menuKeyTable;
+    numTranslations = numMenuKeys;
+  } else if (automapmode & am_active) {
+    translateTable = mapKeyTable;
+    numTranslations = numMapKeys;
+  } else {
+
+    event_t event;
+
+    if (last_weapon_key != 0 && players[displayplayer].pendingweapon != wp_nochange) {
+        event.type = ev_keyup;
+        event.data1 = last_weapon_key;
+        D_PostEvent(&event);
+        last_weapon_key = 0;
+    }
+
+
+    if(kDown & KEY_Y) {
+
+        weapontype_t weapon_index = players[displayplayer].readyweapon;
+
+        weapon_index++;
+        while(players[displayplayer].weaponowned[weapon_index] == false) {
+            weapon_index++;
+            if (weapon_index >= NUMWEAPONS) weapon_index = 0;
+        }
+
+        last_weapon_key = weapons[weapon_index];
+        event.type = ev_keydown;
+        event.data1 = last_weapon_key;
+        D_PostEvent(&event);
+    }
   }
-  break;
 
-  case SDL_MOUSEBUTTONDOWN:
-  case SDL_MOUSEBUTTONUP:
-  if (mouse_enabled) // recognise clicks even if the pointer isn't grabbed
-  {
-    event.type = ev_mouse;
-    event.data1 = I_SDLtoDoomMouseState(SDL_GetMouseState(NULL, NULL));
-    event.data2 = event.data3 = 0;
-    D_PostEvent(&event);
-  }
-  break;
+  translateKeys(ev_keydown, kDown, translateTable, numTranslations);
 
-  case SDL_MOUSEMOTION:
-  if (mouse_currently_grabbed) {
-    event.type = ev_mouse;
-    event.data1 = I_SDLtoDoomMouseState(Event->motion.state);
-    event.data2 = Event->motion.xrel << 5;
-    event.data3 = -Event->motion.yrel << 5;
-    D_PostEvent(&event);
-  }
-  break;
+  translateKeys(ev_keyup, kUp, translateTable, numTranslations);
 
 
-  case SDL_QUIT:
-    S_StartSound(NULL, sfx_swtchn);
-    M_QuitDOOM(0);
-
-  default:
-    break;
-  }
-*/}
-
-//
-// I_PrepareMouse
-// Grab or ungrab the mouse pointer, and flush the mouse motion event queue
-//
-
-static void I_PrepareMouse(int force)
-{
-/*  boolean should_be_grabbed = mouse_enabled &&
-    !(paused || (gamestate != GS_LEVEL) || demoplayback || menuactive);
-
-  if (mouse_currently_grabbed != should_be_grabbed || force)
-  {
-    SDL_Event e;
-
-    mouse_currently_grabbed = should_be_grabbed;
-    SDL_WM_GrabInput(should_be_grabbed ? SDL_GRAB_ON : SDL_GRAB_OFF);
-
-    // Ignore spurious mouse motion events after a state change
-    SDL_PumpEvents();
-    while (SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_MOUSEMOTIONMASK) > 0) ;
-  }
-*/}
-
+}
 //
 // I_StartTic
 //
 
 void I_StartTic (void)
 {
-//  SDL_Event Event;
-
-  I_PrepareMouse(0);
-
-//  while ( SDL_PollEvent(&Event) )
-//    I_GetEvent(&Event);
-
-  I_PollJoystick();
+  scanKeys();
+  gameControls();
 }
 
 //
@@ -284,28 +240,29 @@ static void I_InitInputs(void)
   // check if the user wants to use the mouse
   mouse_enabled = usemouse && !nomouse_parm;
 
-  // e6y: fix for turn-snapping bug on fullscreen in software mode
-//  if (!nomouse_parm)
-//    SDL_WarpMouse((unsigned short)(SCREENWIDTH/2), (unsigned short)(SCREENHEIGHT/2));
-
-  I_InitJoystick();
 }
 
 ///////////////////////////////////////////////////////////
 // Palette stuff.
 //
+typedef struct
+{
+  u8 r;
+  u8 g;
+  u8 b;
+  u8 unused;
+} SDL_Color;
+
+
 static void I_UploadNewPalette(int pal)
 {
   // This is used to replace the current 256 colour cmap with a new one
   // Used by 256 colour PseudoColor modes
 
   // Array of SDL_Color structs used for setting the 256-colour palette
-/*  static SDL_Color* colours;
+  static SDL_Color* colours;
   static int cachedgamma;
   static size_t num_pals;
-
-  if (V_GetMode() == VID_MODEGL)
-    return;
 
   if ((colours == NULL) || (cachedgamma != usegamma)) {
     int pplump = W_GetNumForName("PLAYPAL");
@@ -319,7 +276,7 @@ static void I_UploadNewPalette(int pal)
 
     if (!colours) {
       // First call - allocate and prepare colour array
-      colours = malloc(sizeof(*colours)*num_pals);
+      colours = malloc(sizeof(SDL_Color)*num_pals);
     }
 
     // set the colormap entries
@@ -334,21 +291,21 @@ static void I_UploadNewPalette(int pal)
     W_UnlockLumpNum(gtlump);
     num_pals/=256;
   }
-
 #ifdef RANGECHECK
-  if ((size_t)pal >= num_pals)
-    I_Error("I_UploadNewPalette: Palette number out of range (%d>=%d)",
-      pal, num_pals);
+  if ((size_t)pal >= num_pals) I_Error("I_UploadNewPalette: Palette number out of range (%d>=%d)", pal, num_pals);
 #endif
 
-  // store the colors to the current display
-  // SDL_SetColors(SDL_GetVideoSurface(), colours+256*pal, 0, 256);
-  SDL_SetPalette(
-      SDL_GetVideoSurface(),
-      SDL_LOGPAL | SDL_PHYSPAL,
-      colours+256*pal, 0, 256);
-*/}
+  u32 i;
+  for(i = 0; i < 256; i++)
+  {
+    u8 r, g, b;
+    r = (u8)colours[i+256*pal].r;
+    g = (u8)colours[i+256*pal].g;
+    b = (u8)colours[i+256*pal].b;
+    BG_PALETTE[i]=RGB8(r,g,b);
+  }
 
+}
 //////////////////////////////////////////////////////////////////////////////
 // Graphics API
 
@@ -371,47 +328,30 @@ static int newpal = 0;
 
 void I_FinishUpdate (void)
 {
-/*#ifdef MONITOR_VISIBILITY
-  if (!(SDL_GetAppState()&SDL_APPACTIVE)) {
-    return;
-  }
-#endif
 
-#ifdef GL_DOOM
-  if (V_GetMode() == VID_MODEGL) {
-    // proff 04/05/2000: swap OpenGL buffers
-    gld_Finish();
-    return;
-  }
-#endif
-  if (SDL_MUSTLOCK(screen)) {
-      int h;
-      byte *src;
-      byte *dest;
+	int h = 200;
+	int w = 320;
+	int step = 512;
+	unsigned char *srcmain = screens[0].data;
+	unsigned char *destmain = NULL;
 
-      if (SDL_LockSurface(screen) < 0) {
-        lprintf(LO_INFO,"I_FinishUpdate: %s\n", SDL_GetError());
-        return;
-      }
-      dest=screen->pixels;
-      src=screens[0].data;
-      h=screen->h;
-      for (; h>0; h--)
-      {
-        memcpy(dest,src,SCREENWIDTH*V_GetPixelDepth());
-        dest+=screen->pitch;
-        src+=screens[0].byte_pitch;
-      }
-      SDL_UnlockSurface(screen);
-  }
-  /* Update the display buffer (flipping video pages if supported)
-   * If we need to change palette, that implicitely does a flip */
-/*  if (newpal != NO_PALETTE_CHANGE) {
+
+	destmain = (unsigned char *)BG_GFX;
+
+  for (; h>0; h--)
+  {
+		dmaCopy(srcmain, destmain, w);
+		destmain += step;
+		srcmain += SCREENWIDTH;
+	}
+
+  // Update the display buffer (flipping video pages if supported)
+  // If we need to change palette, that implicitely does a flip
+  if (newpal != NO_PALETTE_CHANGE) {
     I_UploadNewPalette(newpal);
     newpal = NO_PALETTE_CHANGE;
   }
-  SDL_Flip(screen);
-*/}
+}
 
 //
 // I_ScreenShot
@@ -425,29 +365,6 @@ void I_FinishUpdate (void)
 
 int I_ScreenShot (const char *fname)
 {
-#ifdef GL_DOOM
-  if (V_GetMode() == VID_MODEGL)
-  {
-    int result = -1;
-    unsigned char *pixel_data = gld_ReadScreen();
-
-    if (pixel_data)
-    {
-      SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(
-          pixel_data, SCREENWIDTH, SCREENHEIGHT, 24, SCREENWIDTH*3,
-          0x000000ff, 0x0000ff00, 0x00ff0000, 0);
-
-      if (surface)
-      {
-        result = SAVE_PNG_OR_BMP(surface, fname);
-        SDL_FreeSurface(surface);
-      }
-      free(pixel_data);
-    }
-    return result;
-  }
-  else
-#endif
 //  return SAVE_PNG_OR_BMP(SDL_GetVideoSurface(), fname);
 	return 0;
 }
@@ -462,7 +379,7 @@ void I_SetPalette (int pal)
 
 // I_PreInitGraphics
 
-static void I_ShutdownSDL(void)
+static void I_Shutdown(void)
 {
 //  SDL_Quit();
   return;
@@ -470,111 +387,17 @@ static void I_ShutdownSDL(void)
 
 void I_PreInitGraphics(void)
 {
-/*  static const union {
-    const char *c;
-    char *s;
-  } window_pos = {"SDL_VIDEO_WINDOW_POS=center"};
-
-  unsigned int flags = 0;
-
-  putenv(window_pos.s);
-
-  // Initialize SDL
-  if (!(M_CheckParm("-nodraw") && M_CheckParm("-nosound")))
-    flags = SDL_INIT_VIDEO;
-#ifdef _DEBUG
-  flags |= SDL_INIT_NOPARACHUTE;
-#endif
-  if ( SDL_Init(flags) < 0 ) {
-    I_Error("Could not initialize SDL [%s]", SDL_GetError());
-  }
-
-  atexit(I_ShutdownSDL);
 }
-
-// e6y
-// GLBoom use this function for trying to set the closest supported resolution if the requested mode can't be set correctly.
-// For example glboom.exe -geom 1025x768 -nowindow will set 1024x768.
-// It should be used only for fullscreen modes.
-static void I_ClosestResolution (int *width, int *height, int flags)
-{
-  SDL_Rect **modes;
-  int twidth, theight;
-  int cwidth = 0, cheight = 0;
-//  int iteration;
-  int i;
-  unsigned int closest = UINT_MAX;
-  unsigned int dist;
-
-  modes = SDL_ListModes(NULL, flags);
-
-  //for (iteration = 0; iteration < 2; iteration++)
-  {
-    for(i=0; modes[i]; ++i)
-    {
-      twidth = modes[i]->w;
-      theight = modes[i]->h;
-
-      if (twidth > MAX_SCREENWIDTH || theight> MAX_SCREENHEIGHT)
-        continue;
-
-      if (twidth == *width && theight == *height)
-        return;
-
-      //if (iteration == 0 && (twidth < *width || theight < *height))
-      //  continue;
-
-      dist = (twidth - *width) * (twidth - *width) +
-             (theight - *height) * (theight - *height);
-
-      if (dist < closest)
-      {
-        closest = dist;
-        cwidth = twidth;
-        cheight = theight;
-      }
-    }
-    if (closest != UINT_MAX)
-    {
-      *width = cwidth;
-      *height = cheight;
-      return;
-    }
-  }
-*/}
 
 // CPhipps -
 // I_CalculateRes
 // Calculates the screen resolution, possibly using the supplied guide
 void I_CalculateRes(unsigned int width, unsigned int height)
 {
-  // e6y: how about 1680x1050?
-  /*
-  SCREENWIDTH = (width+3) & ~3;
-  SCREENHEIGHT = (height+3) & ~3;
-  */
-
-// e6y
-// GLBoom will try to set the closest supported resolution
-// if the requested mode can't be set correctly.
-// For example glboom.exe -geom 1025x768 -nowindow will set 1024x768.
-// It affects only fullscreen modes.
-/*  if (V_GetMode() == VID_MODEGL) {
-    if ( desired_fullscreen )
-    {
-      I_ClosestResolution(&width, &height, SDL_OPENGL|SDL_FULLSCREEN);
-    }
-    SCREENWIDTH = width;
-    SCREENHEIGHT = height;
-    SCREENPITCH = SCREENWIDTH;
-  } else {
     SCREENWIDTH = width;
     SCREENHEIGHT = height;
     SCREENPITCH = (width * V_GetPixelDepth() + 3) & ~3;
-    if (!(SCREENPITCH % 1024))
-      SCREENPITCH += 32;
-  }
-*/}
+}
 
 // CPhipps -
 // I_SetRes
@@ -586,7 +409,7 @@ void I_SetRes(void)
   I_CalculateRes(SCREENWIDTH, SCREENHEIGHT);
 
   // set first three to standard values
-  for (i=0; i<3; i++) {
+  for (i=0; i<1; i++) {
     screens[i].width = SCREENWIDTH;
     screens[i].height = SCREENHEIGHT;
     screens[i].byte_pitch = SCREENPITCH;
@@ -613,6 +436,10 @@ void I_InitGraphics(void)
   {
     firsttime = 0;
 
+	SCREENWIDTH = 256;
+	SCREENHEIGHT = 192;
+	SCREENPITCH = 256;
+
     atexit(I_ShutdownGraphics);
     lprintf(LO_INFO, "I_InitGraphics: %dx%d\n", SCREENWIDTH, SCREENHEIGHT);
 
@@ -620,10 +447,7 @@ void I_InitGraphics(void)
     I_UpdateVideoMode();
 
     /* Setup the window title */
-    strcpy(titlebuffer,PACKAGE);
-    strcat(titlebuffer," ");
-    strcat(titlebuffer,VERSION);
-//    SDL_WM_SetCaption(titlebuffer, titlebuffer);
+    snprintf(titlebuffer,sizeof(titlebuffer),"%s %s", PACKAGE, VERSION);
 
     /* Initialize the input system */
     I_InitInputs();
@@ -632,28 +456,7 @@ void I_InitGraphics(void)
 
 int I_GetModeFromString(const char *modestr)
 {
-  video_mode_t mode;
-  mode = VID_MODE16;
-/*  if (!stricmp(modestr,"15")) {
-    mode = VID_MODE15;
-  } else if (!stricmp(modestr,"15bit")) {
-    mode = VID_MODE15;
-  } else if (!stricmp(modestr,"16")) {
-    mode = VID_MODE16;
-  } else if (!stricmp(modestr,"16bit")) {
-    mode = VID_MODE16;
-  } else if (!stricmp(modestr,"32")) {
-    mode = VID_MODE32;
-  } else if (!stricmp(modestr,"32bit")) {
-    mode = VID_MODE32;
-  } else if (!stricmp(modestr,"gl")) {
-    mode = VID_MODEGL;
-  } else if (!stricmp(modestr,"OpenGL")) {
-    mode = VID_MODEGL;
-  } else {
-    mode = VID_MODE8;
-  }
-*/  return mode;
+  return VID_MODE8;
 }
 
 void I_UpdateVideoMode(void)
@@ -675,96 +478,13 @@ void I_UpdateVideoMode(void)
 
   I_SetRes();
 
-  // Initialize SDL with this graphics mode
-/*  if (V_GetMode() == VID_MODEGL) {
-    init_flags = SDL_OPENGL;
-  } else {
-    if (use_doublebuffer)
-      init_flags = SDL_DOUBLEBUF;
-    else
-      init_flags = SDL_SWSURFACE;
-#ifndef _DEBUG
-    init_flags |= SDL_HWPALETTE;
-#endif
-  }
-
-  if ( desired_fullscreen )
-    init_flags |= SDL_FULLSCREEN;
-
-  if (V_GetMode() == VID_MODEGL) {
-    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ACCUM_RED_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ACCUM_GREEN_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ACCUM_BLUE_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_ACCUM_ALPHA_SIZE, 0 );
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-    SDL_GL_SetAttribute( SDL_GL_BUFFER_SIZE, gl_colorbuffer_bits );
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, gl_depthbuffer_bits );
-    screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, gl_colorbuffer_bits, init_flags);
-  } else {
-    screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, V_GetNumPixelBits(), init_flags);
-  }
-
-  if(screen == NULL) {
-    I_Error("Couldn't set %dx%d video mode [%s]", SCREENWIDTH, SCREENHEIGHT, SDL_GetError());
-  }
-
-  lprintf(LO_INFO, "I_UpdateVideoMode: 0x%x, %s, %s\n", init_flags, screen->pixels ? "SDL buffer" : "own buffer", SDL_MUSTLOCK(screen) ? "lock-and-copy": "direct access");
-
-  // Get the info needed to render to the display
-  if (!SDL_MUSTLOCK(screen))
-  {
-    screens[0].not_on_heap = true;
-    screens[0].data = (unsigned char *) (screen->pixels);
-    screens[0].byte_pitch = screen->pitch;
-    screens[0].short_pitch = screen->pitch / V_GetModePixelDepth(VID_MODE16);
-    screens[0].int_pitch = screen->pitch / V_GetModePixelDepth(VID_MODE32);
-  }
-  else
-  {
-    screens[0].not_on_heap = false;
-  }
+  screens[0].not_on_heap = false;
+  screens[0].width = SCREENWIDTH;
+  screens[0].height = SCREENHEIGHT;
+  screens[0].byte_pitch = SCREENPITCH;
+  screens[0].short_pitch = screens[0].byte_pitch/2;
+  screens[0].int_pitch = screens[0].short_pitch/2;
 
   V_AllocScreens();
-
-  // Hide pointer while over this window
-  SDL_ShowCursor(0);
-
-  I_PrepareMouse(1);
-
   R_InitBuffer(SCREENWIDTH, SCREENHEIGHT);
-
-  if (V_GetMode() == VID_MODEGL) {
-    int temp;
-    lprintf(LO_INFO,"SDL OpenGL PixelFormat:\n");
-    SDL_GL_GetAttribute( SDL_GL_RED_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_RED_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_GREEN_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_GREEN_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_BLUE_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_BLUE_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_STENCIL_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_STENCIL_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_ACCUM_RED_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_ACCUM_RED_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_ACCUM_GREEN_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_ACCUM_GREEN_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_ACCUM_BLUE_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_ACCUM_BLUE_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_ACCUM_ALPHA_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_ACCUM_ALPHA_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_DOUBLEBUFFER, &temp );
-    lprintf(LO_INFO,"    SDL_GL_DOUBLEBUFFER: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_BUFFER_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_BUFFER_SIZE: %i\n",temp);
-    SDL_GL_GetAttribute( SDL_GL_DEPTH_SIZE, &temp );
-    lprintf(LO_INFO,"    SDL_GL_DEPTH_SIZE: %i\n",temp);
-#ifdef GL_DOOM
-    gld_Init(SCREENWIDTH, SCREENHEIGHT);
-#endif
-  }
-*/}
+}

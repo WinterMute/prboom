@@ -95,37 +95,57 @@
 #include "config.h"
 #endif
 
+#include <nds.h>
+
 static unsigned int start_displaytime;
 static unsigned int displaytime;
 static boolean InDisplay = false;
+
+bool I_CallBack(void) {
+  return true;
+}
+
+#define timers2ms(tlow,thigh) ((tlow>>5)+(thigh<<11))
+
+// Handy DSdev.org timer functions
+u32 GetTicks(void)
+{
+	return timers2ms(TIMER0_DATA, TIMER1_DATA);
+}
+
+void Pause(u32 ms)
+{
+	u32 now;
+	now=timers2ms(TIMER0_DATA, TIMER1_DATA);
+	while((u32)timers2ms(TIMER0_DATA, TIMER1_DATA)<now+ms);
+}
 
 boolean I_StartDisplay(void)
 {
   if (InDisplay)
     return false;
 
-//  start_displaytime = SDL_GetTicks();
+  start_displaytime = GetTicks();
   InDisplay = true;
   return true;
 }
 
 void I_EndDisplay(void)
 {
-//  displaytime = SDL_GetTicks() - start_displaytime;
+  displaytime = GetTicks() - start_displaytime;
   InDisplay = false;
 }
 
 void I_uSleep(unsigned long usecs)
 {
-//    SDL_Delay(usecs/1000);
+  Pause(usecs/1000);
 }
 
 int ms_to_next_tick;
 
 int I_GetTime_RealTime (void)
 {
-//  int t = SDL_GetTicks();
-  int t;
+  int t = GetTicks();
   int i = t*(TICRATE/5)/200;
   ms_to_next_tick = (i+1)*200/(TICRATE/5) - t;
   if (ms_to_next_tick > 1000/TICRATE || ms_to_next_tick<1) ms_to_next_tick = 1;
@@ -138,7 +158,7 @@ fixed_t I_GetTimeFrac (void)
   unsigned long now;
   fixed_t frac;
 
-//  now = SDL_GetTicks();
+  now = GetTicks();
 
   if (tic_vars.step == 0)
     return FRACUNIT;
@@ -158,7 +178,7 @@ void I_GetTime_SaveMS(void)
   if (!movement_smooth)
     return;
 
-//  tic_vars.start = SDL_GetTicks();
+  tic_vars.start = GetTicks();
   tic_vars.next = (unsigned int) ((tic_vars.start * tic_vars.msec + 1.0f) / tic_vars.msec);
   tic_vars.step = tic_vars.next - tic_vars.start;
 }
@@ -172,7 +192,7 @@ void I_GetTime_SaveMS(void)
 unsigned long I_GetRandomTimeSeed(void)
 {
 /* This isnt very random */
-//  return(SDL_GetTicks());
+  return(GetTicks());
 }
 
 /* cphipps - I_GetVersionString
@@ -275,7 +295,7 @@ const char *I_DoomExeDir(void)
 #else
 // cph - V.Aguilar (5/30/99) suggested return ~/.lxdoom/, creating
 //  if non-existant
-static const char prboom_dir[] = {"/.prboom"}; // Mead rem extra slash 8/21/03
+static const char prboom_dir[] = {""}; // Mead rem extra slash 8/21/03
 
 const char *I_DoomExeDir(void)
 {
@@ -283,7 +303,7 @@ const char *I_DoomExeDir(void)
   if (!base)        // cache multiple requests
     {
 //      char *home = getenv("HOME");
-      char *home = "./";
+      char *home = "";
       size_t len = strlen(home);
 
       base = malloc(len + strlen(prboom_dir) + 1);
@@ -334,14 +354,7 @@ char* I_FindFile(const char* wfname, const char* ext)
     const char *(*func)(void); // for I_DoomExeDir
   } search[] = {
     {NULL}, // current working directory
-    {NULL, NULL, "DOOMWADDIR"}, // run-time $DOOMWADDIR
     {DOOMWADDIR}, // build-time configured DOOMWADDIR
-    {NULL, "doom", "HOME"}, // ~/doom
-    {NULL, NULL, "HOME"}, // ~
-    {NULL, NULL, NULL, I_DoomExeDir}, // config directory
-    {"/usr/local/share/games/doom"},
-    {"/usr/share/games/doom"},
-    {"/usr/local/share/doom"},
     {"/usr/share/doom"},
   };
 
@@ -382,33 +395,6 @@ char* I_FindFile(const char* wfname, const char* ext)
 }
 #endif
 
-#ifdef _WIN32
-static char* WINError(void)
-{
-  static char *WinEBuff = NULL;
-  DWORD err = GetLastError();
-  char *ch;
-
-  if (WinEBuff)
-  {
-    LocalFree(WinEBuff);
-  }
-
-  if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-    NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-    (LPTSTR) &WinEBuff, 0, NULL) == 0)
-  {
-    return "Unknown error";
-  }
-
-  if ((ch = strchr(WinEBuff, '\n')) != 0)
-    *ch = 0;
-  if ((ch = strchr(WinEBuff, '\r')) != 0)
-    *ch = 0;
-
-  return WinEBuff;
-}
-#endif
 
 #define DEFAULT_AFFINITY_MASK 1
 

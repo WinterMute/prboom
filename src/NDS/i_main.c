@@ -62,6 +62,7 @@
 #include <stdlib.h>
 
 #include <nds.h>
+#include <fat.h>
 
 /* Most of the following has been rewritten by Lee Killough
  *
@@ -418,7 +419,26 @@ static void I_Quit (void)
 uid_t stored_euid = -1;
 #endif
 
-PrintConsole bottomScreen;
+static int old_console;
+static PrintConsole bottomScreen;
+
+void keyboardStart() {
+	REG_DISPCNT_SUB &= ~DISPLAY_BG3_ACTIVE;
+	dmaFillWords(0,BG_GFX_SUB,128*1024);
+	dmaCopy(BG_PALETTE_SUB,BG_MAP_RAM_SUB(28),512);
+	keyboardInit(NULL, 0, BgType_Text4bpp, BgSize_T_256x512, 29, 1, false, true);
+	BG_PALETTE_SUB[255] = RGB15(31,31,31);
+	consoleSetWindow(&bottomScreen, 0,0,32,14);
+	keyboardShow();
+}
+
+void keyboardEnd() {
+	keyboardHide();
+	consoleSetWindow(&bottomScreen, 0,0,32,24);
+
+}
+
+
 
 //int main(int argc, const char * const * argv)
 int main(int argc, char **argv)
@@ -431,26 +451,45 @@ int main(int argc, char **argv)
 
   consoleInit(&bottomScreen,1, BgType_Text4bpp, BgSize_T_256x256, 31, 0, false, true);
 
-#ifdef SECURE_UID
-  /* First thing, revoke setuid status (if any) */
-  stored_euid = geteuid();
-  if (getuid() != stored_euid)
-    if (seteuid(getuid()) < 0)
-      fprintf(stderr, "Failed to revoke setuid\n");
-    else
-      fprintf(stderr, "Revoked uid %d\n",stored_euid);
-#endif
+
+  powerOn(POWER_ALL);
+  soundEnable();
+  defaultExceptionHandler();
+
+
+  TIMER0_DATA=0;	// Set up the timer
+  TIMER1_DATA=0;
+  TIMER0_CR=TIMER_DIV_1024 | TIMER_ENABLE;
+  TIMER1_CR=TIMER_CASCADE | TIMER_ENABLE;
+
+	// Jefklak 19/11/06 - adjust upper/lower screen stuff
+	// ### UPPER SCREEN #### //
+  videoSetMode(MODE_5_2D|DISPLAY_BG3_ACTIVE);	// BG3 only - extended rotation
+  vramSetBankA(VRAM_A_MAIN_BG_0x06000000);		// same as VRAM_A_MAIN_BG
+  vramSetBankB(VRAM_B_MAIN_BG_0x06020000);		// use second bank for main screen - 256 KiB
+
+  REG_BG3CNT = BG_BMP8_512x512;					// BG3 Control register, 8 bits
+  REG_BG3PA = 1 << 8;
+  REG_BG3PB = 0; // BG SCALING X
+  REG_BG3PC = 0; // BG SCALING Y
+  REG_BG3PD = 1 << 8;
+  REG_BG3X = 0;
+  REG_BG3Y = 0;
+
+  // clear upper screen (black) instead of junk
+  memset(BG_GFX, 0, 512 * 512 * 2);
+  swiWaitForVBlank();
+
+  if (!fatInitDefault())
+  {
+	iprintf("Unable to initialize media device!\n");
+  } else {
+    iprintf("fatInitDefault(): initialized.\n");
+  }
 
   myargc = argc;
   myargv = (const char * const *) argv;
 
-#ifdef _WIN32
-  if (!M_CheckParm("-nodraw")) {
-    /* initialize the console window */
-    Init_ConsoleWin();
-    atexit(Done_ConsoleWin);
-  }
-#endif
   /* Version info */
   lprintf(LO_INFO,"\n");
   PrintVer();
@@ -476,16 +515,6 @@ int main(int argc, char **argv)
   Z_Init();                  /* 1/18/98 killough: start up memory stuff first */
 
   atexit(I_Quit);
-#ifndef _DEBUG
-  signal(SIGSEGV, I_SignalHandler);
-  signal(SIGTERM, I_SignalHandler);
-  signal(SIGFPE,  I_SignalHandler);
-  signal(SIGILL,  I_SignalHandler);
-  signal(SIGINT,  I_SignalHandler);  /* killough 3/6/98: allow CTRL-BRK during init */
-  signal(SIGABRT, I_SignalHandler);
-#endif
-
-  I_SetAffinityMask();
 
   /* cphipps - call to video specific startup code */
   I_PreInitGraphics();
