@@ -127,11 +127,10 @@ static void stopchan(int channel)
   if (channelinfo[channel].data) /* cph - prevent excess unlocks */
   {
     if (sound_inited) {
-      CSND_getchannelstate_isplaying(channel + 8, &playing);
+      csndIsPlaying(channel + 8, &playing);
       if (playing)
       {
-        CSND_setchannel_playbackstate(channel, 0);
-        CSND_sharedmemtype0_cmdupdatestate(1);
+        CSND_SetPlayState(channel, 0);
       }
     }
     channelinfo[channel].data=NULL;
@@ -172,12 +171,12 @@ static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
   channelinfo[channel].id = sfxid;
 
   if (sound_inited) {
-    CSND_playsound(
-      channel + 8, CSND_LOOP_DISABLE, CSND_ENCODING_PCM8,
+    csndPlaySound(
+      channel + 8, SOUND_FORMAT_8BIT,
       channelinfo[channel].samplerate,
       channelinfo[channel].data,
       channelinfo[channel].data,
-      len, 2, 0);
+      len);
   }
   return channel;
 }
@@ -472,7 +471,7 @@ void I_ShutdownSound(void)
   if (sound_inited) {
     lprintf(LO_INFO, "I_ShutdownSound: ");
 
-    CSND_shutdown();
+    csndExit();
 
     lprintf(LO_INFO, "\n");
     sound_inited = false;
@@ -486,7 +485,7 @@ void I_InitSound(void)
   // Secure and configure sound device first.
   lprintf(LO_INFO,"I_InitSound: ");
 
-  if (CSND_initialize(NULL)==0) {
+  if (csndInit()==0) {
     sound_inited = true;
     lprintf(LO_INFO," configured 3DS audio device\n");
     if (first_sound_init) {
