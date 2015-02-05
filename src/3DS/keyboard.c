@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <3ds/types.h>
 #include <3ds/services/hid.h>
 
 #include "keyboard.h"
