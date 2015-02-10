@@ -961,10 +961,10 @@ void M_LoadDefaults (void)
 
   f = fopen (defaultfile, "r");
   buffer = malloc(CONFIG_BUFFER_SIZE);
-  setvbuf(f,buffer,_IOFBF,CONFIG_BUFFER_SIZE);
 
   if (f)
     {
+    setvbuf(f,buffer,_IOFBF,CONFIG_BUFFER_SIZE);
     while (!feof(f))
       {
       isstring = false;
