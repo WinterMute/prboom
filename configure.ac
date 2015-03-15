@@ -233,7 +233,7 @@ AS_IF([test "x$enable_sdl" = xno],
   ])
 
 AM_CONDITIONAL(BUILD_SERVER, [test "$sdl_net" = "yes"])
-AM_CONDITIONAL(BUILD_SDL, [test "$with_sdl" = "yes"])
+AM_CONDITIONAL(BUILD_SDL, [test "$enable_sdl" = "yes"])
 AM_CONDITIONAL(BUILD_3DS, [test "$with_platform" = "3ds"])
 AM_CONDITIONAL(BUILD_NDS, [test "$with_platform" = "nds"])
 
