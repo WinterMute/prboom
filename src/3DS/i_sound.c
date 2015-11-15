@@ -174,6 +174,7 @@ static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
     csndPlaySound(
       channel + 8, SOUND_FORMAT_8BIT,
       channelinfo[channel].samplerate,
+      1.0f,0.0f,
       channelinfo[channel].data,
       channelinfo[channel].data,
       len);
