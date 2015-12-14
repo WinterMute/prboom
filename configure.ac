@@ -31,6 +31,8 @@ AC_PROG_CC
 AX_PROG_CC_FOR_BUILD
 AC_PROG_LN_S
 AC_PROG_RANLIB
+AC_PROG_AR
+
 AC_GNU_SOURCE
 
 if test "x$GCC" = "xyes"; then
@@ -50,7 +52,7 @@ AC_SUBST(CC_FOR_BUILD)
 
 dnl --- cph: work out flags to pass to compiler
 CFLAGS_OPT="-O2 -fomit-frame-pointer"
-AC_C_COMPILE_FLAGS(-Wall -Wextra -Wno-missing-field-initializers -Wwrite-strings -Wundef -Wbad-function-cast -Wcast-align -Wcast-qual -Wdeclaration-after-statement -Wpointer-arith -ffast-math)
+AC_C_COMPILE_FLAGS(-Wall -Wextra -Wno-missing-field-initializers -Wwrite-strings -Wundef -Wbad-function-cast -Wcast-align -Wcast-qual -Wdeclaration-after-statement -Wpointer-arith)
 dnl --- Option to enable debugging
 AC_ARG_ENABLE(debug,AC_HELP_STRING([--enable-debug],[turns on various debugging features, like range checking and internal heap diagnostics]),,enable_debug="no")
 if test "$enable_debug" = "no"
@@ -133,7 +135,7 @@ case "$host" in
         enable_sdl=no
         enable_gl=no
         if test x$with_platform = x3ds; then
-            CFLAGS="$CFLAGS -march=armv6k -mtune=mpcore -mfloat-abi=hard -mword-relocations"
+            CFLAGS="$CFLAGS -ffunction-sections -fdata-sections -march=armv6k -mtune=mpcore -mfloat-abi=hard -mword-relocations"
             LDFLAGS="$LDFLAGS -march=armv6k -mtune=mpcore -mfloat-abi=hard -specs=3dsx.specs -Wl,-Map,prboom.map"
         fi
         if test x$with_platform = xnds; then
@@ -285,4 +287,4 @@ AC_SUBST(CFLAGS)
 AC_SUBST(DOOMWADDIR)
 
 dnl --- output
-AC_OUTPUT(Makefile src/Makefile src/POSIX/Makefile src/NDS/Makefile src/3DS/Makefile src/SDL/Makefile src/MAC/Makefile doc/Makefile data/Makefile ICONS/Makefile VisualC6/Makefile VisualC8/Makefile prboom.spec)
+AC_OUTPUT(Makefile src/Makefile src/POSIX/Makefile src/MUSIC/Makefile src/NDS/Makefile src/3DS/Makefile src/SDL/Makefile src/MAC/Makefile doc/Makefile data/Makefile ICONS/Makefile VisualC6/Makefile VisualC8/Makefile prboom.spec)
