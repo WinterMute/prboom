@@ -382,9 +382,9 @@ void I_FinishUpdate (void)
 
   }
 
+  gspWaitForVBlank();
   gfxSwapBuffers();
   gfxFlushBuffers();
-  gspWaitForVBlank();
   now = svcGetSystemTick();
   frametics = now - lasttic;
   lasttic = now;
