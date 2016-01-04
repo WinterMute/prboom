@@ -61,11 +61,7 @@ typedef uint8_t Uint8;
 
 #include "d_main.h"
 
-#include <3ds/types.h>
-#include <3ds/services/csnd.h>
-#include <3ds/linear.h>
-#include <3ds/services/gsp.h>
-#include <3ds/os.h>
+#include <3ds.h>
 
 // The number of internal mixing channels,
 //  the samples calculated for each mixing step,
@@ -81,7 +77,7 @@ int detect_voices = 0; // God knows
 static boolean sound_inited = false;
 static boolean first_sound_init = true;
 
-#define MAX_CHANNELS    16
+#define MAX_CHANNELS    8
 int snd_samplerate=11025;
 
 
@@ -123,21 +119,21 @@ int   vol_lookup[128*256];
 
 static void stopchan(int channel)
 {
-  u8 playing;
-  if (channelinfo[channel].data) /* cph - prevent excess unlocks */
-  {
+
+
+  if (channelinfo[channel].data) /* cph - prevent excess unlocks */ {
     if (sound_inited) {
-      csndIsPlaying(channel + 8, &playing);
-      if (playing)
-      {
-        CSND_SetPlayState(channel, 0);
+      if(ndspChnIsPlaying(channel)){
+        ndspChnWaveBufClear(channel);
       }
+      linearFree(channelinfo[channel].data);
+      channelinfo[channel].data=NULL;
+      W_UnlockLumpNum(S_sfx[channelinfo[channel].id].lumpnum);
     }
-    channelinfo[channel].data=NULL;
-    W_UnlockLumpNum(S_sfx[channelinfo[channel].id].lumpnum);
   }
 }
 
+ndspWaveBuf waveBuffer[MAX_CHANNELS];
 //
 // This function adds a sound to the
 //  list of currently active sounds,
@@ -147,16 +143,17 @@ static void stopchan(int channel)
 //
 static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
 {
-  int i;
-  u8 *src, *dst;
+  size_t i;
+  const u8 *src; u8 *dst;
 
   stopchan(channel);
 
+  len = (data[5]<<8)+data[4];
   channelinfo[channel].data = linearAlloc(len);
-  src = data  + 8;
+  src = (data  + 8);
   dst = channelinfo[channel].data ;
   for (i=0; i<len; i++) *dst++ = (*src++) ^ 0x80;
-  GSPGPU_FlushDataCache(NULL, channelinfo[channel].data, len);
+  DSP_FlushDataCache(channelinfo[channel].data, len);
 
   /* Set pointer to end of raw data. */
   channelinfo[channel].enddata = channelinfo[channel].data + len - 1;
@@ -171,19 +168,33 @@ static int addsfx(int sfxid, int channel, const unsigned char* data, size_t len)
   channelinfo[channel].id = sfxid;
 
   if (sound_inited) {
-    csndPlaySound(
-      channel + 8, SOUND_FORMAT_8BIT,
-      channelinfo[channel].samplerate,
-      1.0f,0.0f,
-      channelinfo[channel].data,
-      channelinfo[channel].data,
-      len);
+
+      ndspChnSetRate(channel, channelinfo[channel].samplerate);
+
+      waveBuffer[channel].data_vaddr = channelinfo[channel].data;
+      waveBuffer[channel].nsamples = len;
+      waveBuffer[channel].looping = false;
+      waveBuffer[channel].status = NDSP_WBUF_FREE;
+
+      DSP_FlushDataCache(&waveBuffer[channel], sizeof(ndspWaveBuf));
+
+
+      ndspChnWaveBufAdd(channel, &waveBuffer[channel]);
   }
   return channel;
 }
 
-static void updateSoundParams(int handle, int volume, int seperation, int pitch)
+static void updateSoundParams(int channel, int volume, int separation, int pitch)
 {
+  float mix[12] = {
+    1.0f, 1.0f,
+    0.0f, 0.0f,
+    0.0f, 0.0f,
+    0.0f, 0.0f,
+    0.0f, 0.0f,
+    0.0f, 0.0f
+  };
+  ndspChnSetMix(channel, mix);
 #if 0
   int slot = handle;
     int   rightvol;
@@ -314,8 +325,8 @@ int I_StartSound(int id, int channel, int vol, int sep, int pitch, int priority)
 
 
   // Returns a handle (not used).
-  addsfx(id, channel, data, len);
   updateSoundParams(channel, vol, sep, pitch);
+  addsfx(id, channel, data, len);
 
 
   return channel;
@@ -369,6 +380,7 @@ boolean I_AnySoundStillPlaying(void)
 
 static void I_UpdateSound(void *unused, Uint8 *stream, int len)
 {
+#if 0
   // Mix current sound data.
   // Data, from raw sound, for right and left.
   register unsigned char sample;
@@ -465,6 +477,7 @@ static void I_UpdateSound(void *unused, Uint8 *stream, int len)
   leftout += step;
   rightout += step;
     }
+#endif
 }
 
 void I_ShutdownSound(void)
@@ -472,7 +485,7 @@ void I_ShutdownSound(void)
   if (sound_inited) {
     lprintf(LO_INFO, "I_ShutdownSound: ");
 
-    csndExit();
+    ndspExit();
 
     lprintf(LO_INFO, "\n");
     sound_inited = false;
@@ -486,8 +499,19 @@ void I_InitSound(void)
   // Secure and configure sound device first.
   lprintf(LO_INFO,"I_InitSound: ");
 
-  if (csndInit()==0) {
+  if (ndspInit()==0) {
+
+    ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+
+    int i;
+
+    for (i=0; i<MAX_CHANNELS; i++) {
+      ndspChnSetInterp(i, NDSP_INTERP_LINEAR);
+      ndspChnSetFormat(i, NDSP_FORMAT_MONO_PCM8);
+
+    }
     sound_inited = true;
+
     lprintf(LO_INFO," configured 3DS audio device\n");
     if (first_sound_init) {
       atexit(I_ShutdownSound);
