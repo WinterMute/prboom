@@ -410,6 +410,9 @@ static void I_Quit (void)
 bool I_CallBack() {
     return aptMainLoop();
 }
+
+u64 startgametime;
+
 //int main(int argc, const char * const * argv)
 int main(int argc, char **argv)
 {
@@ -457,6 +460,8 @@ int main(int argc, char **argv)
 
   /* cphipps - call to video specific startup code */
   I_PreInitGraphics();
+
+  startgametime = svcGetSystemTick();
 
   D_DoomMain ();
 

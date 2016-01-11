@@ -111,16 +111,14 @@ boolean I_StartDisplay(void)
   if (InDisplay)
     return false;
 
-  start_displaytime = osGetTime();
-  start_displaytic = svcGetSystemTick();
+  start_displaytime = svcGetSystemTick();
   InDisplay = true;
   return true;
 }
 
 void I_EndDisplay(void)
 {
-  displaytime = osGetTime() - start_displaytime;
-  displaytics = svcGetSystemTick() - start_displaytic;
+  displaytime = (100*(svcGetSystemTick() - start_displaytime))/26812348;
   InDisplay = false;
 }
 
@@ -131,9 +129,11 @@ void I_uSleep(unsigned long usecs)
 
 int ms_to_next_tick;
 
+extern u64 startgametime;
+
 int I_GetTime_RealTime (void)
 {
-  u64 t = osGetTime();
+  u64 t = (100*(svcGetSystemTick() - startgametime))/26812348;
   u64 i = t*(TICRATE/5)/200;
   ms_to_next_tick = (i+1)*200/(TICRATE/5) - t;
   if (ms_to_next_tick > 1000/TICRATE || ms_to_next_tick<1) ms_to_next_tick = 1;
@@ -146,7 +146,7 @@ fixed_t I_GetTimeFrac (void)
   unsigned long now;
   fixed_t frac;
 
-  now = osGetTime();
+  now = (100*(svcGetSystemTick() - startgametime))/26812348;
 
   if (tic_vars.step == 0)
     return FRACUNIT;
@@ -166,7 +166,7 @@ void I_GetTime_SaveMS(void)
   if (!movement_smooth)
     return;
 
-//  tic_vars.start = SDL_GetTicks();
+  tic_vars.start = (100*(svcGetSystemTick() - startgametime))/26812348;
   tic_vars.next = (unsigned int) ((tic_vars.start * tic_vars.msec + 1.0f) / tic_vars.msec);
   tic_vars.step = tic_vars.next - tic_vars.start;
 }
