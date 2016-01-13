@@ -40,6 +40,8 @@ Basic Installation
      http://prboom.sourceforge.net/linux.html for information on downloading
      the right libraries for your system.
 
+     The 3DS port does not require SDL headers and libraries.
+
   2. `cd' to the directory containing the PrBoom distribution (the directory
      this file is in).
 
@@ -50,6 +52,12 @@ Basic Installation
 
      Running `configure' takes awhile.  While running, it prints some
      messages telling which features it is checking for.
+
+     For 3DS add $DEVKITARM/bin to your path then configure with.
+     './configure --host=arm-none-eabi --with-platform=3ds'
+
+     On windows you'll also need a native gcc in the path. MSYS2 is
+     highly recommended for this. See https://msys2.github.io/
 
   3. Type `make' to compile PrBoom. This may take some time; while it's
      compiling I suggest you read the README, or maybe go and look for some
