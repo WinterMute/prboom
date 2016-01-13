@@ -114,7 +114,7 @@ prboom.smdh:
 	smdhtool --create "prboom 3DS" "port of prboom to 3DS" "WinterMute" $(top_srcdir)/ICONS/prboom.png $@
 
 prboom.3dsx:	prboom.smdh prboom
-	3dsxtool prboom $@
+	3dsxtool prboom $@ --smdh=prboom.smdh
 endif
 
 EXTRA_DIST = \
