@@ -1,6 +1,6 @@
 ## Doom for 3DS
 
-Place the prboom folder on your SD card in the 3DS folder as specified by [3ds Hbmenu](https://github.com/smealum/3ds_hb_menu).
+Place the prboom folder on your SD card in the 3DS folder as specified by [3ds Hbmenu](https://github.com/smealum/3ds_hb_menu). Make sure you have the latest boot.3dsx (1.1.0 currently) as previous versions muck up argv.
 
 Start button will bring up game menu and exit from menu. Controls in the menu are DPAD and Select/A to select menu item. B button goes back a menu level.
 
