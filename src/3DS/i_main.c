@@ -422,6 +422,7 @@ int main(int argc, char **argv)
   atexit(gfxExit);
 
   consoleInit(GFX_BOTTOM, NULL);
+
   gfxSetScreenFormat(GFX_TOP,GSP_RGBA8_OES);
   gfxSwapBuffers();
   gfxFlushBuffers();
@@ -462,6 +463,8 @@ int main(int argc, char **argv)
   I_PreInitGraphics();
 
   startgametime = svcGetSystemTick();
+
+  osSetSpeedupEnable(true);
 
   D_DoomMain ();
 
